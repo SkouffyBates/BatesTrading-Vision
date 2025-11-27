@@ -44,6 +44,7 @@ const App = () => {
     editTrade,
     deleteTrade,
     getTradesByAccount,
+    reloadTrades,
   } = useTrades(INITIAL_TRADES);
 
   const {
@@ -94,10 +95,28 @@ const App = () => {
       try {
         const json = JSON.parse(e.target.result);
         if (json.trades && json.plan) {
-          if (
-            window.confirm('Attention : Ceci va écraser vos données. Continuer ?')
-          ) {
-            alert('Import réussi !');
+          if (window.confirm('Attention : Ceci va écraser vos données. Continuer ?')) {
+            (async () => {
+              try {
+                if (window.db && window.db.migrateFromLocalStorage) {
+                  await window.db.migrateFromLocalStorage(json);
+                  // refresh in-memory trades
+                  await reloadTrades();
+                } else {
+                  // fallback to localStorage
+                  localStorage.setItem('swing_trades', JSON.stringify(json.trades || []));
+                  localStorage.setItem('swing_accounts', JSON.stringify(json.accounts || []));
+                  localStorage.setItem('swing_plan', JSON.stringify(json.plan || null));
+                  localStorage.setItem('swing_macro_events', JSON.stringify(json.macroEvents || []));
+                  // reload the page to pick up local changes
+                  window.location.reload();
+                }
+                alert('Import réussi !');
+              } catch (err) {
+                console.error('Import error:', err);
+                alert('Échec de l\'import : ' + (err.message || err));
+              }
+            })();
           }
         } else {
           alert('Format invalide.');
@@ -109,6 +128,22 @@ const App = () => {
     reader.readAsText(file);
     event.target.value = null;
   };
+
+  // Listen for calendar navigation events to open Journal and scroll to a trade
+  React.useEffect(() => {
+    const handler = (e) => {
+      const tradeId = e?.detail;
+      if (!tradeId) return;
+      navigateTo(VIEWS.TRADING);
+      // wait for Journal to mount and then scroll
+      setTimeout(() => {
+        const el = document.getElementById(`trade-${tradeId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    };
+    window.addEventListener('navigateToTrade', handler);
+    return () => window.removeEventListener('navigateToTrade', handler);
+  }, [navigateTo]);
 
   // Show migration screen first
   if (!migrationComplete) {

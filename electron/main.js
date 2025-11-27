@@ -20,6 +20,29 @@ import {
   loadLegacyData,
 } from './database.js';
 
+// Normalize DB trade row (snake_case) to renderer-friendly camelCase
+const normalizeTradeRow = (row) => {
+  if (!row) return row;
+  return {
+    id: row.id,
+    accountId: row.account_id || row.accountId,
+    openDate: row.open_date || row.openDate,
+    closeDate: row.close_date || row.closeDate,
+    pair: row.pair,
+    direction: row.direction,
+    positionSize: row.position_size || row.positionSize,
+    setup: row.setup,
+    risk: row.risk,
+    pnl: row.pnl,
+    r: row.r,
+    notes: row.notes,
+    psychology: row.psychology,
+    screenshotBefore: row.screenshot_before || row.screenshotBefore,
+    screenshotAfter: row.screenshot_after || row.screenshotAfter,
+    createdAt: row.created_at || row.createdAt,
+  };
+};
+
 // Empêcher le garbage collection de la fenêtre
 let mainWindow;
 
@@ -71,10 +94,28 @@ function setupIpcHandlers() {
   ipcMain.handle('db:deleteAccount', (event, id) => deleteAccount(id));
 
   // ==================== TRADES ====================
-  ipcMain.handle('db:getTrades', () => getAllTrades());
-  ipcMain.handle('db:createTrade', (event, trade) => createTrade(trade));
-  ipcMain.handle('db:updateTrade', (event, trade) => updateTrade(trade));
-  ipcMain.handle('db:deleteTrade', (event, id) => deleteTrade(id));
+  ipcMain.handle('db:getTrades', () => {
+    const rows = getAllTrades();
+    return (rows || []).map(normalizeTradeRow);
+  });
+
+  ipcMain.handle('db:createTrade', (event, trade) => {
+    createTrade(trade);
+    const rows = getAllTrades();
+    return (rows || []).map(normalizeTradeRow);
+  });
+
+  ipcMain.handle('db:updateTrade', (event, trade) => {
+    updateTrade(trade);
+    const rows = getAllTrades();
+    return (rows || []).map(normalizeTradeRow);
+  });
+
+  ipcMain.handle('db:deleteTrade', (event, id) => {
+    deleteTrade(id);
+    const rows = getAllTrades();
+    return (rows || []).map(normalizeTradeRow);
+  });
 
   // ==================== TRADING PLAN ====================
   ipcMain.handle('db:getTradingPlan', () => getTradingPlan());
@@ -87,6 +128,7 @@ function setupIpcHandlers() {
 
   // ==================== MIGRATION ====================
   ipcMain.handle('db:migrateFromLocalStorage', (event, data) => migrateFromLocalStorage(data));
+  ipcMain.handle('db:loadLegacyData', () => loadLegacyData());
 }
 
 app.on('window-all-closed', () => {

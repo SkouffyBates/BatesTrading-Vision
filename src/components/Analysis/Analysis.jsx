@@ -113,9 +113,14 @@ const Analysis = ({ trades }) => {
 
       {/* Calendar Heatmap - RESTORED */}
       <CalendarHeatmap trades={trades} onTradeSelect={(trade) => {
-        // Scroll to trade in journal view or navigate
-        const element = document.getElementById(`trade-${trade.id}`);
-        if (element) element.scrollIntoView({ behavior: 'smooth' });
+        // Dispatch a global event so App can navigate to Journal and scroll
+        try {
+          window.dispatchEvent(new CustomEvent('navigateToTrade', { detail: trade.id }));
+        } catch (e) {
+          // Fallback: try direct scroll if possible
+          const element = document.getElementById(`trade-${trade.id}`);
+          if (element) element.scrollIntoView({ behavior: 'smooth' });
+        }
       }} />
 
       {/* Direction Stats */}
