@@ -101,6 +101,54 @@ const Dashboard = ({ trades, accounts, currentAccountId }) => {
         </div>
       </div>
 
+      {/* New Widgets Row - Routine, Adherence, Objectives */}
+      <div className="dashboard-grid cols-3">
+        <div className="stat-card glow-active">
+          <div className="h-full flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">📅 Routine Quotidienne</h3>
+              <div className="text-emerald-400 text-2xl font-bold mb-1">3/5</div>
+              <p className="text-xs text-slate-500">Tâches complétées aujourd'hui</p>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2 mt-3">
+              <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full rounded-full" style={{ width: '60%' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card glow-active">
+          <div className="h-full flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">✅ Adhérence au Plan</h3>
+              <div className={`text-2xl font-bold mb-1 ${stats.winRate > 60 ? 'text-emerald-400' : stats.winRate > 40 ? 'text-yellow-400' : 'text-red-400'}`}>
+                {stats.winRate}%
+              </div>
+              <p className="text-xs text-slate-500">Règles respectées</p>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2 mt-3">
+              <div className={`h-full rounded-full ${
+                stats.winRate > 60 ? 'bg-gradient-to-r from-emerald-500 to-green-500' : 
+                stats.winRate > 40 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                'bg-gradient-to-r from-red-500 to-orange-500'
+              }`} style={{ width: `${Math.min(stats.winRate, 100)}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card glow-active">
+          <div className="h-full flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">🎯 Objectif Mensuel</h3>
+              <div className="text-cyan-400 text-2xl font-bold mb-1">${(stats.totalPnL).toFixed(0)}</div>
+              <p className="text-xs text-slate-500">Cible: $500 (+{((stats.totalPnL / 500) * 100).toFixed(0)}%)</p>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2 mt-3">
+              <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full" style={{ width: `${Math.min((stats.totalPnL / 500) * 100, 100)}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="divider-gradient"></div>
 
       {/* Charts Section */}

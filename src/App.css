@@ -1,42 +1,189 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* ==================== GLOBAL STYLES ==================== */
+:root {
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-border: #475569;
+  --color-accent-emerald: #10b981;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-red: #ef4444;
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* ==================== TYPOGRAPHY ==================== */
+.brutal-title-small {
+  @apply text-xl font-black text-white tracking-tight;
 }
 
-@keyframes logo-spin {
+.brutal-title {
+  @apply text-2xl font-black text-white tracking-tight;
+}
+
+.section-title {
+  @apply text-lg font-bold text-white uppercase tracking-wider;
+}
+
+/* ==================== CARDS & CONTAINERS ==================== */
+.u-card {
+  @apply bg-slate-800/50 border border-slate-700/50 backdrop-blur-sm rounded-xl;
+  transition: all var(--transition-normal);
+}
+
+.u-card:hover {
+  @apply border-slate-600/70 bg-slate-800/70;
+}
+
+.dashboard-section {
+  @apply bg-slate-800/40 border border-slate-700/30 rounded-xl p-6 backdrop-blur-sm;
+  transition: all var(--transition-normal);
+}
+
+.dashboard-section:hover {
+  @apply border-slate-600/50 bg-slate-800/60;
+}
+
+.stat-card {
+  @apply dashboard-section h-full;
+}
+
+.glow-active {
+  @apply shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/10;
+}
+
+/* ==================== CHARTS ==================== */
+.chart-container {
+  @apply rounded-lg bg-slate-900/40 border border-slate-700/20 p-4;
+}
+
+/* ==================== BUTTONS ==================== */
+.brutal-btn {
+  @apply px-4 py-2 rounded-lg font-bold uppercase tracking-wider transition-all duration-200;
+  @apply hover:scale-105 active:scale-95;
+}
+
+.brutal-btn:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* ==================== FORM ELEMENTS ==================== */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="email"],
+textarea,
+select {
+  @apply bg-slate-900 border border-slate-600 rounded-lg p-3 text-white;
+  @apply placeholder-slate-500 outline-none;
+  @apply focus:ring-2 focus:ring-emerald-500 focus:border-transparent;
+  @apply transition-all var(--transition-fast);
+}
+
+select {
+  @apply appearance-none cursor-pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+select option {
+  @apply bg-slate-900 text-white;
+}
+
+/* ==================== GRID LAYOUTS ==================== */
+.dashboard-grid {
+  @apply grid gap-6 auto-rows-max;
+}
+
+.dashboard-grid.cols-3 {
+  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+}
+
+.dashboard-grid.cols-4 {
+  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-4;
+}
+
+/* ==================== DIVIDERS & DECORATIVE ==================== */
+.divider-gradient {
+  @apply h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent my-6;
+}
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes fade-in {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.card {
-  padding: 2em;
+.animate-in {
+  animation: fade-in 0.3s ease-in-out;
 }
 
-.read-the-docs {
-  color: #888;
+.fade-in {
+  animation: fade-in 0.5s ease-in-out;
 }
+
+.slide-up {
+  animation: slide-up 0.5s ease-in-out;
+}
+
+/* ==================== SCROLLBAR STYLING ==================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.8);
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.text-gradient {
+  @apply bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent;
+}
+
+.shadow-glow {
+  @apply shadow-lg shadow-cyan-500/20;
+}
+
+/* ==================== RESPONSIVE UTILITIES ==================== */
+@media (max-width: 768px) {
+  .hidden-mobile {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .hidden-desktop {
+    display: none;
+  }
+}
+

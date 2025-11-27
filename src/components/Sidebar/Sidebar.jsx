@@ -40,11 +40,11 @@ const Sidebar = ({
           <select
             value={currentAccountId}
             onChange={(e) => onAccountChange(e.target.value)}
-            className="w-full bg-slate-800 text-white text-sm rounded p-1.5 outline-none border border-slate-700 focus:border-cyan-500"
+            className="w-full bg-slate-900 border border-slate-600 text-white text-sm rounded-lg p-3 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer"
           >
-            <option value="all">Vue Globale (Tous)</option>
+            <option value="all" className="bg-slate-900 text-white">Vue Globale (Tous)</option>
             {accounts.map((acc) => (
-              <option key={acc.id} value={acc.id}>
+              <option key={acc.id} value={acc.id} className="bg-slate-900 text-white">
                 {acc.name}
               </option>
             ))}

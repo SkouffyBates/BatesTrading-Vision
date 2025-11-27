@@ -112,7 +112,11 @@ const Analysis = ({ trades }) => {
       </div>
 
       {/* Calendar Heatmap - RESTORED */}
-      <CalendarHeatmap trades={trades} />
+      <CalendarHeatmap trades={trades} onTradeSelect={(trade) => {
+        // Scroll to trade in journal view or navigate
+        const element = document.getElementById(`trade-${trade.id}`);
+        if (element) element.scrollIntoView({ behavior: 'smooth' });
+      }} />
 
       {/* Direction Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

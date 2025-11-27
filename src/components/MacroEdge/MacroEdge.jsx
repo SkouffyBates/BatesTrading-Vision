@@ -233,17 +233,17 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
               <div>
                 <label className="text-xs text-slate-500">Catégorie</label>
                 <select
-                  className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer"
                   value={newEvent.category}
                   onChange={(e) =>
                     setNewEvent({ ...newEvent, category: e.target.value })
                   }
                 >
-                  <option value="Inflation">Inflation (CPI/PPI)</option>
-                  <option value="Employment">Emploi (NFP/Jobs)</option>
-                  <option value="Growth">Croissance (GDP/ISM)</option>
-                  <option value="Confidence">Confiance (UoM/CB)</option>
-                  <option value="Central Bank">Banque Centrale (Fed)</option>
+                  <option value="Inflation" className="bg-slate-900 text-white">Inflation (CPI/PPI)</option>
+                  <option value="Employment" className="bg-slate-900 text-white">Emploi (NFP/Jobs)</option>
+                  <option value="Growth" className="bg-slate-900 text-white">Croissance (GDP/ISM)</option>
+                  <option value="Confidence" className="bg-slate-900 text-white">Confiance (UoM/CB)</option>
+                  <option value="Central Bank" className="bg-slate-900 text-white">Banque Centrale (Fed)</option>
                 </select>
               </div>
             </div>
@@ -295,15 +295,15 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
             <div>
               <label className="text-xs text-slate-500">Impact</label>
               <select
-                className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm"
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer"
                 value={newEvent.impact}
                 onChange={(e) =>
                   setNewEvent({ ...newEvent, impact: e.target.value })
                 }
               >
-                <option value="High">Haut (Rouge)</option>
-                <option value="Medium">Moyen (Orange)</option>
-                <option value="Low">Faible (Jaune)</option>
+                <option value="High" className="bg-slate-900 text-white">Haut (Rouge)</option>
+                <option value="Medium" className="bg-slate-900 text-white">Moyen (Orange)</option>
+                <option value="Low" className="bg-slate-900 text-white">Faible (Jaune)</option>
               </select>
             </div>
 

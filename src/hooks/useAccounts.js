@@ -1,28 +1,56 @@
 import { useState, useEffect } from 'react';
 
 /**
- * Custom hook for managing trading accounts
- * Handles CRUD operations and localStorage persistence
+ * Custom hook for managing accounts with SQLite
  */
 export const useAccounts = (initialAccounts = []) => {
-  const [accounts, setAccounts] = useState(() => {
-    const saved = localStorage.getItem('swing_accounts');
-    return saved ? JSON.parse(saved) : initialAccounts;
-  });
-
+  const [accounts, setAccounts] = useState([]);
   const [currentAccountId, setCurrentAccountId] = useState('all');
+  const [loading, setLoading] = useState(true);
 
-  // Persist to localStorage
+  const isElectron = typeof window !== 'undefined' && window.db;
+
   useEffect(() => {
-    localStorage.setItem('swing_accounts', JSON.stringify(accounts));
-  }, [accounts]);
+    const loadAccounts = async () => {
+      if (isElectron) {
+        try {
+          const dbAccounts = await window.db.getAccounts();
+          setAccounts(dbAccounts || []);
+        } catch (error) {
+          console.error('Error loading accounts:', error);
+          const saved = localStorage.getItem('swing_accounts');
+          setAccounts(saved ? JSON.parse(saved) : initialAccounts);
+        }
+      } else {
+        const saved = localStorage.getItem('swing_accounts');
+        setAccounts(saved ? JSON.parse(saved) : initialAccounts);
+      }
+      setLoading(false);
+    };
 
-  const addAccount = (account) => {
-    setAccounts([...accounts, account]);
+    loadAccounts();
+  }, []);
+
+  const addAccount = async (account) => {
+    if (isElectron) {
+      const updated = await window.db.createAccount(account);
+      setAccounts(updated);
+    } else {
+      const newAccounts = [...accounts, account];
+      setAccounts(newAccounts);
+      localStorage.setItem('swing_accounts', JSON.stringify(newAccounts));
+    }
   };
 
-  const deleteAccount = (id) => {
-    setAccounts(accounts.filter((a) => a.id !== id));
+  const deleteAccount = async (id) => {
+    if (isElectron) {
+      const updated = await window.db.deleteAccount(id);
+      setAccounts(updated);
+    } else {
+      const newAccounts = accounts.filter((a) => a.id !== id);
+      setAccounts(newAccounts);
+      localStorage.setItem('swing_accounts', JSON.stringify(newAccounts));
+    }
     if (currentAccountId === id) {
       setCurrentAccountId('all');
     }
@@ -45,6 +73,7 @@ export const useAccounts = (initialAccounts = []) => {
     deleteAccount,
     getCurrentAccount,
     getTotalBalance,
+    loading,
   };
 };
 

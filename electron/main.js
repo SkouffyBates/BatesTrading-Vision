@@ -1,7 +1,24 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// fs removed: personal-finance JSON persistence deleted
+import {
+  initDatabase,
+  closeDatabase,
+  getAllAccounts,
+  createAccount,
+  deleteAccount,
+  getAllTrades,
+  createTrade,
+  updateTrade,
+  deleteTrade,
+  getTradingPlan,
+  saveTradingPlan,
+  getAllMacroEvents,
+  createMacroEvent,
+  deleteMacroEvent,
+  migrateFromLocalStorage,
+  loadLegacyData,
+} from './database.js';
 
 // Empêcher le garbage collection de la fenêtre
 let mainWindow;
@@ -34,10 +51,46 @@ function createWindow() {
 // __dirname replacement for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Personal Finance IPC handlers removed (module deleted)
-app.whenReady().then(createWindow);
+
+// ==================== IPC HANDLERS ====================
+
+// Initialize database when app is ready
+app.whenReady().then(() => {
+  initDatabase();
+  setupIpcHandlers();
+  createWindow();
+});
+
+/**
+ * Setup all IPC handlers for database operations
+ */
+function setupIpcHandlers() {
+  // ==================== ACCOUNTS ====================
+  ipcMain.handle('db:getAccounts', () => getAllAccounts());
+  ipcMain.handle('db:createAccount', (event, account) => createAccount(account));
+  ipcMain.handle('db:deleteAccount', (event, id) => deleteAccount(id));
+
+  // ==================== TRADES ====================
+  ipcMain.handle('db:getTrades', () => getAllTrades());
+  ipcMain.handle('db:createTrade', (event, trade) => createTrade(trade));
+  ipcMain.handle('db:updateTrade', (event, trade) => updateTrade(trade));
+  ipcMain.handle('db:deleteTrade', (event, id) => deleteTrade(id));
+
+  // ==================== TRADING PLAN ====================
+  ipcMain.handle('db:getTradingPlan', () => getTradingPlan());
+  ipcMain.handle('db:saveTradingPlan', (event, plan) => saveTradingPlan(plan));
+
+  // ==================== MACRO EVENTS ====================
+  ipcMain.handle('db:getMacroEvents', () => getAllMacroEvents());
+  ipcMain.handle('db:createMacroEvent', (event, event_data) => createMacroEvent(event_data));
+  ipcMain.handle('db:deleteMacroEvent', (event, id) => deleteMacroEvent(id));
+
+  // ==================== MIGRATION ====================
+  ipcMain.handle('db:migrateFromLocalStorage', (event, data) => migrateFromLocalStorage(data));
+}
 
 app.on('window-all-closed', () => {
+  closeDatabase();
   if (process.platform !== 'darwin') {
     app.quit();
   }

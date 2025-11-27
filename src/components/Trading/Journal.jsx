@@ -9,6 +9,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewMode, setViewMode] = useState('table');
+  const [pnlMode, setPnlMode] = useState('usd'); // 'usd' or 'percent'
 
   const [formData, setFormData] = useState({
     accountId: currentAccountId !== 'all' ? currentAccountId : accounts[0]?.id || '',
@@ -20,6 +21,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
     setup: '',
     risk: '',
     pnl: '',
+    pnlPercent: '',
     notes: '',
     psychology: 'Calme',
     result: 'Win',
@@ -38,12 +40,14 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
       setup: '',
       risk: '',
       pnl: '',
+      pnlPercent: '',
       notes: '',
       psychology: 'Calme',
       result: 'Win',
       screenshotBefore: '',
       screenshotAfter: ''
     });
+    setPnlMode('usd');
     setEditingId(null);
     setIsModalOpen(true);
   };
@@ -59,12 +63,14 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
       setup: trade.setup,
       risk: trade.risk,
       pnl: trade.pnl,
+      pnlPercent: '',
       notes: trade.notes,
       psychology: trade.psychology,
       result: trade.pnl > 0 ? 'Win' : 'Loss',
       screenshotBefore: trade.screenshotBefore || trade.screenshot || '',
       screenshotAfter: trade.screenshotAfter || ''
     });
+    setPnlMode('usd');
     setEditingId(trade.id);
     setIsModalOpen(true);
   };
@@ -72,7 +78,14 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
   const handleSubmit = (e) => {
     e.preventDefault();
     const riskAmount = parseFloat(formData.risk) || 0;
-    const pnlAmount = parseFloat(formData.pnl) || 0;
+    
+    // Convert P&L: if percent mode, calculate from risk
+    let pnlAmount = parseFloat(formData.pnl) || 0;
+    if (pnlMode === 'percent') {
+      const percentValue = parseFloat(formData.pnlPercent) || 0;
+      pnlAmount = (riskAmount * percentValue) / 100;
+    }
+    
     const rMultiple = riskAmount > 0 ? (pnlAmount / riskAmount).toFixed(2) : 0;
     const tradeData = {
       ...formData,
@@ -150,6 +163,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                   .map((trade) => (
                     <tr
                       key={trade.id}
+                      id={`trade-${trade.id}`}
                       className="hover:bg-slate-700/30 transition-colors"
                     >
                       <td className="px-4 py-4 text-sm whitespace-nowrap">
@@ -376,10 +390,10 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       accountId: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-500 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-slate-900 border border-slate-500 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer"
                 >
                   {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
+                    <option key={acc.id} value={acc.id} className="bg-slate-900 text-white">
                       {acc.name} ({acc.currency})
                     </option>
                   ))}
@@ -400,7 +414,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       openDate: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -417,7 +431,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       closeDate: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -436,13 +450,13 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       pair: e.target.value.toUpperCase()
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm text-slate-400">
+                  <label className="text-sm font-medium text-slate-300">
                     Direction
                   </label>
                   <select
@@ -453,14 +467,14 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                         direction: e.target.value
                       })
                     }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none"
+                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer"
                   >
-                    <option value="Long">Long</option>
-                    <option value="Short">Short</option>
+                    <option value="Long" className="bg-slate-900 text-white">Long</option>
+                    <option value="Short" className="bg-slate-900 text-white">Short</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-slate-400">Taille</label>
+                  <label className="text-sm font-medium text-slate-300">Taille</label>
                   <input
                     type="text"
                     placeholder="1.5 Lots"
@@ -471,17 +485,14 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                         positionSize: e.target.value
                       })
                     }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none"
+                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-400">Setup</label>
-                <input
-                  type="text"
-                  list="setups"
-                  placeholder="Breakout..."
+                <label className="text-sm font-medium text-slate-300">Setup</label>
+                <select
                   value={formData.setup}
                   onChange={(e) =>
                     setFormData({
@@ -489,19 +500,19 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       setup: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none"
-                />
-                <datalist id="setups">
-                  <option value="Trend Following" />
-                  <option value="Breakout" />
-                  <option value="Reversal" />
-                  <option value="Range" />
-                </datalist>
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">-- Choisir un setup --</option>
+                  <option value="Trend Following" className="bg-slate-900 text-white">Trend Following</option>
+                  <option value="Breakout" className="bg-slate-900 text-white">Breakout</option>
+                  <option value="Reversal" className="bg-slate-900 text-white">Reversal</option>
+                  <option value="Range" className="bg-slate-900 text-white">Range</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm text-slate-400">Risque</label>
+                  <label className="text-sm font-medium text-slate-300">Risque ($)</label>
                   <input
                     type="number"
                     required
@@ -513,31 +524,51 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                         risk: e.target.value
                       })
                     }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none"
+                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-slate-400">
-                    P&L Réalisé
+                  <label className="text-sm font-medium text-slate-300">
+                    P&L
                   </label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="150"
-                    value={formData.pnl}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        pnl: e.target.value
-                      })
-                    }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="number"
+                        required
+                        placeholder={pnlMode === 'usd' ? '150' : '50'}
+                        value={pnlMode === 'usd' ? formData.pnl : formData.pnlPercent}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [pnlMode === 'usd' ? 'pnl' : 'pnlPercent']: e.target.value
+                          })
+                        }
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent pr-12"
+                      />
+                      <span className="absolute right-3 top-3 text-slate-400 font-bold">
+                        {pnlMode === 'usd' ? '$' : '%'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPnlMode(pnlMode === 'usd' ? 'percent' : 'usd')}
+                      className="px-3 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-xs font-bold text-cyan-400 transition-colors"
+                      title="Basculer entre $ et %"
+                    >
+                      {pnlMode === 'usd' ? '$ → %' : '% → $'}
+                    </button>
+                  </div>
+                  {pnlMode === 'percent' && parseFloat(formData.risk) > 0 && (
+                    <p className="text-xs text-cyan-400/70 mt-1">
+                      ≈ ${((parseFloat(formData.risk) * parseFloat(formData.pnlPercent)) / 100).toFixed(2)}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-400">
+                <label className="text-sm font-medium text-slate-300">
                   Screenshot AVANT
                 </label>
                 <input
@@ -550,12 +581,12 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       screenshotBefore: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none text-sm"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-400">
+                <label className="text-sm font-medium text-slate-300">
                   Screenshot APRÈS
                 </label>
                 <input
@@ -568,12 +599,12 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       screenshotAfter: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none text-sm"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-400">
+                <label className="text-sm font-medium text-slate-300">
                   Psychologie
                 </label>
                 <select
@@ -584,18 +615,18 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       psychology: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer"
                 >
-                  <option value="Calme">Calme / Discipliné</option>
-                  <option value="Anxieux">Anxieux / Hésitant</option>
-                  <option value="FOMO">FOMO / Impulsif</option>
-                  <option value="Revenge">Revenge / Colère</option>
-                  <option value="Confiant">Confiant</option>
+                  <option value="Calme" className="bg-slate-900 text-white">Calme / Discipliné</option>
+                  <option value="Anxieux" className="bg-slate-900 text-white">Anxieux / Hésitant</option>
+                  <option value="FOMO" className="bg-slate-900 text-white">FOMO / Impulsif</option>
+                  <option value="Revenge" className="bg-slate-900 text-white">Revenge / Colère</option>
+                  <option value="Confiant" className="bg-slate-900 text-white">Confiant</option>
                 </select>
               </div>
 
               <div className="md:col-span-2 space-y-2">
-                <label className="text-sm text-slate-400">Notes</label>
+                <label className="text-sm font-medium text-slate-300">Notes / Analyse</label>
                 <textarea
                   rows="3"
                   value={formData.notes}
@@ -605,8 +636,8 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       notes: e.target.value
                     })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none resize-none"
-                  placeholder="Analyse..."
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                  placeholder="Décrivez votre analyse..."
                 />
               </div>
 

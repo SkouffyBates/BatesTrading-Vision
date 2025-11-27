@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 
 // Components
 import Dashboard from './components/Dashboard/Dashboard';
@@ -9,8 +9,9 @@ import TradingPlan from './components/TradingPlan/TradingPlan';
 import MacroEdge from './components/MacroEdge/MacroEdge';
 import Sidebar from './components/Sidebar/Sidebar';
 import AccountModal from './components/Common/AccountModal';
+import MigrationHelper from './components/Common/MigrationHelper';
 
-// Hooks
+// Hooks (now with SQLite support)
 import useTrades from './hooks/useTrades';
 import useAccounts from './hooks/useAccounts';
 import useTradingPlan from './hooks/useTradingPlan';
@@ -27,17 +28,18 @@ import {
 } from './utils/constants';
 
 /**
- * Main App Component - Refactored
+ * Main App Component - With SQLite Support
  */
 const App = () => {
   const fileInputRef = useRef(null);
-  const [isAccountModalOpen, setIsAccountModalOpen] = React.useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [migrationComplete, setMigrationComplete] = useState(false);
 
-  // Custom hooks
   const { currentView, navigateTo } = useNavigation(VIEWS.DASHBOARD);
-  
+
   const {
     trades,
+    loading: tradesLoading,
     addTrade,
     editTrade,
     deleteTrade,
@@ -50,12 +52,10 @@ const App = () => {
     setCurrentAccountId,
     addAccount,
     deleteAccount,
+    loading: accountsLoading,
   } = useAccounts(INITIAL_ACCOUNTS);
 
-  const {
-    plan,
-    setPlan,
-  } = useTradingPlan(INITIAL_PLAN);
+  const { plan, setPlan } = useTradingPlan(INITIAL_PLAN);
 
   const {
     events: macroEvents,
@@ -64,13 +64,11 @@ const App = () => {
     riskScore,
   } = useMacroEvents(INITIAL_MACRO_EVENTS);
 
-  // Filter trades by current account
   const displayedTrades = useMemo(
     () => getTradesByAccount(currentAccountId),
     [trades, currentAccountId]
   );
 
-  // Export/Import handlers
   const exportData = () => {
     const dataStr =
       'data:text/json;charset=utf-8,' +
@@ -97,11 +95,8 @@ const App = () => {
         const json = JSON.parse(e.target.result);
         if (json.trades && json.plan) {
           if (
-            window.confirm(
-              'Attention : Ceci va écraser vos données. Continuer ?'
-            )
+            window.confirm('Attention : Ceci va écraser vos données. Continuer ?')
           ) {
-            // You'll need to implement setters for this
             alert('Import réussi !');
           }
         } else {
@@ -115,9 +110,25 @@ const App = () => {
     event.target.value = null;
   };
 
+  // Show migration screen first
+  if (!migrationComplete) {
+    return <MigrationHelper onComplete={() => setMigrationComplete(true)} />;
+  }
+
+  // Show loading screen while data loads
+  if (tradesLoading || accountsLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Chargement des données...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen app-root text-slate-100 font-sans overflow-hidden">
-      {/* Sidebar */}
       <Sidebar
         currentView={currentView}
         onViewChange={navigateTo}
@@ -129,15 +140,12 @@ const App = () => {
         onImportClick={() => fileInputRef.current?.click()}
       />
 
-      {/* Main Content */}
       <main className="flex-1 overflow-auto p-8 bg-slate-900 relative">
         <div className="max-w-7xl mx-auto pb-20">
-          {/* Mobile Header */}
           <header className="md:hidden mb-6 flex justify-between items-center">
             <h1 className="text-xl brutal-title-small">Bates Tading Vision</h1>
           </header>
 
-          {/* Current Account Badge */}
           {currentAccountId !== 'all' && (
             <div className="mb-6 u-card p-4 rounded-xl flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -160,7 +168,6 @@ const App = () => {
             </div>
           )}
 
-          {/* View Router */}
           {currentView === VIEWS.DASHBOARD && (
             <Dashboard
               trades={displayedTrades}
@@ -198,16 +205,11 @@ const App = () => {
           )}
 
           {currentView === VIEWS.PLAN && (
-            <TradingPlan
-              plan={plan}
-              setPlan={setPlan}
-              trades={displayedTrades}
-            />
+            <TradingPlan plan={plan} setPlan={setPlan} trades={displayedTrades} />
           )}
         </div>
       </main>
 
-      {/* Account Modal */}
       <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
@@ -216,7 +218,6 @@ const App = () => {
         onDeleteAccount={deleteAccount}
       />
 
-      {/* Hidden file input for import */}
       <input
         type="file"
         ref={fileInputRef}
