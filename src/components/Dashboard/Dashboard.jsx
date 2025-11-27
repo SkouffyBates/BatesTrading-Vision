@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, CheckCircle, BarChart2, BookOpen, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import { calculateStats, calculateDrawdown, calculateConsecutiveWins, calculateConsecutiveLosses, calculateAvgWin, calculateAvgLoss, calculateRRatio } from '../../utils/calculations';
@@ -9,7 +9,9 @@ const COLORS = ['#10B981', '#EF4444'];
 /**
  * Enhanced Dashboard with more visual indicators
  */
-const Dashboard = ({ trades, accounts, currentAccountId, timeFilter, setTimeFilter }) => {
+const Dashboard = ({ trades, accounts, currentAccountId }) => {
+  const [timeFilter, setTimeFilter] = useState('all');
+
   const filteredTrades = useMemo(() => {
     const now = new Date();
     return trades.filter(trade => {

@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, ScatterChart, Scatter } from 'recharts';
 import { BarChart2, TrendingUp, Zap } from 'lucide-react';
+import CalendarHeatmap from '../Common/CalendarHeatmap';
 
 /**
- * Enhanced Analysis with correlation, drawdown, win/loss ratios
+ * Enhanced Analysis with correlation, drawdown, win/loss ratios + Calendar
  */
 const Analysis = ({ trades }) => {
   const setupStats = useMemo(() => {
@@ -109,6 +110,9 @@ const Analysis = ({ trades }) => {
       <div className="dashboard-section">
         <h2 className="section-title mb-6">Analyse & Statistiques Détaillées</h2>
       </div>
+
+      {/* Calendar Heatmap - RESTORED */}
+      <CalendarHeatmap trades={trades} />
 
       {/* Direction Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
