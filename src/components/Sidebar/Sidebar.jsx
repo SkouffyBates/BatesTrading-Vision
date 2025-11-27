@@ -1,0 +1,133 @@
+import React from 'react';
+import {
+  LayoutDashboard,
+  BookOpen,
+  BarChart2,
+  Brain,
+  ScrollText,
+  Globe,
+  Plus,
+  Download,
+  Upload
+} from 'lucide-react';
+import { VIEWS } from '../../utils/constants';
+
+const Sidebar = ({
+  currentView,
+  onViewChange,
+  currentAccountId,
+  onAccountChange,
+  accounts,
+  onAccountModalOpen,
+  onExport,
+  onImportClick
+}) => {
+  return (
+    <aside className="w-64 sidebar bg-slate-950 border-r border-slate-800 flex flex-col">
+      <div className="sidebar-brand u-card">
+        <h1 className="text-2xl font-extrabold tracking-tight brutal-title">
+          BatesTading<span className="font-light text-white">Vision</span>
+        </h1>
+        <p className="text-xs text-slate-500 mt-1 neon-badge">Journal</p>
+      </div>
+
+      {/* Account Selector */}
+      <div className="px-4 pt-4">
+        <div className="u-card rounded-lg p-2">
+          <label className="text-xs text-slate-500 uppercase font-bold mb-1 block pl-1">
+            Compte Actif
+          </label>
+          <select
+            value={currentAccountId}
+            onChange={(e) => onAccountChange(e.target.value)}
+            className="w-full bg-slate-800 text-white text-sm rounded p-1.5 outline-none border border-slate-700 focus:border-cyan-500"
+          >
+            <option value="all">Vue Globale (Tous)</option>
+            {accounts.map((acc) => (
+              <option key={acc.id} value={acc.id}>
+                {acc.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={onAccountModalOpen}
+            className="w-full mt-2 text-xs text-cyan-400 hover:text-cyan-300 flex items-center justify-center gap-1 py-1 border border-dashed border-slate-700 hover:border-cyan-500 rounded transition-colors"
+          >
+            <Plus size={12} /> Gérer les comptes
+          </button>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <button
+          onClick={() => onViewChange(VIEWS.DASHBOARD)}
+          className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            currentView === VIEWS.DASHBOARD ? 'active' : ''
+          }`}
+        >
+          <LayoutDashboard size={20} /> <span className="nav-label">Dashboard</span>
+        </button>
+        <button
+          onClick={() => onViewChange(VIEWS.TRADING)}
+          className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            currentView === VIEWS.TRADING ? 'active' : ''
+          }`}
+        >
+          <BookOpen size={20} /> <span className="nav-label">Journal</span>
+        </button>
+        <button
+          onClick={() => onViewChange(VIEWS.ANALYSIS)}
+          className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            currentView === VIEWS.ANALYSIS ? 'active' : ''
+          }`}
+        >
+          <BarChart2 size={20} /> <span className="nav-label">Analyse</span>
+        </button>
+        <button
+          onClick={() => onViewChange(VIEWS.MACRO)}
+          className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            currentView === VIEWS.MACRO ? 'active' : ''
+          }`}
+        >
+          <Globe size={20} /> <span className="nav-label">MacroEdge</span>
+          <span className="text-[10px] bg-red-500 text-white px-1 rounded ml-auto">PRO</span>
+        </button>
+        <button
+          onClick={() => onViewChange(VIEWS.PSYCHOLOGY)}
+          className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            currentView === VIEWS.PSYCHOLOGY ? 'active' : ''
+          }`}
+        >
+          <Brain size={20} /> <span className="nav-label">Psychologie</span>
+        </button>
+        <button
+          onClick={() => onViewChange(VIEWS.PLAN)}
+          className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            currentView === VIEWS.PLAN ? 'active' : ''
+          }`}
+        >
+          <ScrollText size={20} /> <span className="nav-label">Plan de Trading</span>
+        </button>
+      </nav>
+
+      {/* Bottom Actions */}
+      <div className="p-4 border-t border-slate-800 space-y-2">
+        <button
+          onClick={onExport}
+          className="w-full flex items-center justify-center gap-2 u-card text-slate-300 text-sm py-2 rounded-lg transition-colors"
+        >
+          <Download size={16} /> Backup Data
+        </button>
+        <button
+          onClick={onImportClick}
+          className="w-full flex items-center justify-center gap-2 u-card text-slate-300 text-sm py-2 rounded-lg transition-colors"
+        >
+          <Upload size={16} /> Import Data
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;
