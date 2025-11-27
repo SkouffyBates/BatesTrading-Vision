@@ -1,15 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Eye, ImageIcon, Pencil, Trash2, List, Grid } from 'lucide-react';
 
 /**
  * Trading Journal - Table & Gallery views
- * Note: Cette version réutilise la logique actuelle du Journal
+ * ✅ CORRECTION: Écoute les événements d'édition depuis le calendrier
  */
 const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, onDeleteTrade }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewMode, setViewMode] = useState('table');
-  const [pnlMode, setPnlMode] = useState('usd'); // 'usd' or 'percent'
+  const [pnlMode, setPnlMode] = useState('usd');
 
   const [formData, setFormData] = useState({
     accountId: currentAccountId !== 'all' ? currentAccountId : accounts[0]?.id || '',
@@ -28,6 +28,22 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
     screenshotBefore: '',
     screenshotAfter: ''
   });
+
+  // ✅ CORRECTION: Écouter les événements d'édition depuis le calendrier
+  useEffect(() => {
+    const handler = (e) => {
+      const tradeId = e?.detail;
+      if (!tradeId) return;
+      
+      const trade = trades.find(t => t.id === tradeId);
+      if (trade) {
+        openEditTradeModal(trade);
+      }
+    };
+    
+    window.addEventListener('editTrade', handler);
+    return () => window.removeEventListener('editTrade', handler);
+  }, [trades]);
 
   const openNewTradeModal = () => {
     setFormData({
@@ -79,7 +95,6 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
     e.preventDefault();
     const riskAmount = parseFloat(formData.risk) || 0;
     
-    // Convert P&L: if percent mode, calculate from risk
     let pnlAmount = parseFloat(formData.pnl) || 0;
     if (pnlMode === 'percent') {
       const percentValue = parseFloat(formData.pnlPercent) || 0;
@@ -361,7 +376,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
         </div>
       )}
 
-      {/* Modal - Keep existing logic */}
+      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-600 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -377,6 +392,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Reste du formulaire identique... */}
               <div className="md:col-span-2 bg-slate-700/30 p-4 rounded-lg border border-slate-600 mb-4">
                 <label className="text-sm text-emerald-400 font-bold block mb-2 flex items-center gap-2">
                   Compte de Trading

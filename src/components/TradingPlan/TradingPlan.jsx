@@ -3,9 +3,14 @@ import { CheckCircle, ScrollText, Plus, Trash2, Flag, Target, TrendingUp } from 
 
 /**
  * Enhanced Trading Plan with visual tracking and performance metrics
+ * ✅ CORRECTION: Modal d'édition d'objectif fonctionnel
  */
 const TradingPlan = ({ plan, setPlan, trades }) => {
   const [newRule, setNewRule] = useState("");
+  
+  // ✅ CORRECTION: États pour l'édition d'objectif
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState(plan.goals);
 
   const toggleRoutine = (id) => {
     const newRoutine = plan.dailyRoutine.map(item =>
@@ -27,6 +32,12 @@ const TradingPlan = ({ plan, setPlan, trades }) => {
     setPlan({ ...plan, rules: newRules });
   };
 
+  // ✅ CORRECTION: Handler pour sauvegarder l'objectif
+  const handleSaveGoal = () => {
+    setPlan({ ...plan, goals: goalInput });
+    setIsEditingGoal(false);
+  };
+
   // Calculate routine completion
   const routineCompletion = useMemo(() => {
     const completed = plan.dailyRoutine.filter(item => item.done).length;
@@ -36,12 +47,10 @@ const TradingPlan = ({ plan, setPlan, trades }) => {
   // Calculate plan adherence from trades
   const planAdherence = useMemo(() => {
     if (trades.length === 0) return 0;
-    // Simplified: trades with certain psychology/setup suggest rule adherence
-    const disciplined = trades.filter(t => 
-      (t.psychology === 'Calme' || t.psychology === 'Confiant') && 
-      (t.setup && t.setup !== '')
-    ).length;
-    return Math.round((disciplined / trades.length) * 100);
+    const negativeStates = ['FOMO', 'Revenge', 'Anxieux'];
+    const indisciplinedCount = trades.filter(t => negativeStates.includes(t.psychology)).length;
+    const score = Math.round(((trades.length - indisciplinedCount) / trades.length) * 100);
+    return score;
   }, [trades]);
 
   return (
@@ -89,13 +98,19 @@ const TradingPlan = ({ plan, setPlan, trades }) => {
           </p>
         </div>
 
-        {/* Goals */}
+        {/* Goals - ✅ CORRECTION: Bouton fonctionnel */}
         <div className="dashboard-section p-6">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <TrendingUp size={20} className="text-yellow-400" /> Objectif
           </h3>
           <p className="text-sm text-slate-300 italic mb-4">"{plan.goals}"</p>
-          <button className="w-full bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/50 text-cyan-400 px-3 py-2 rounded transition-colors text-sm">
+          <button 
+            onClick={() => {
+              setGoalInput(plan.goals);
+              setIsEditingGoal(true);
+            }}
+            className="w-full bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/50 text-cyan-400 px-3 py-2 rounded transition-colors text-sm"
+          >
             Éditer l'objectif
           </button>
         </div>
@@ -197,6 +212,39 @@ const TradingPlan = ({ plan, setPlan, trades }) => {
           </div>
         </div>
       </div>
+
+      {/* ✅ CORRECTION: Modal d'édition d'objectif */}
+      {isEditingGoal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="u-card rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Target size={20} className="text-yellow-400" />
+              Éditer l'Objectif
+            </h3>
+            <textarea
+              value={goalInput}
+              onChange={(e) => setGoalInput(e.target.value)}
+              rows={5}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white resize-none mb-4 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              placeholder="Décrivez votre objectif de trading..."
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveGoal}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold transition-colors"
+              >
+                ✓ Sauvegarder
+              </button>
+              <button
+                onClick={() => setIsEditingGoal(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

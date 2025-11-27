@@ -87,63 +87,82 @@ const App = () => {
     downloadAnchorNode.remove();
   };
 
-  const handleImport = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const json = JSON.parse(e.target.result);
-        if (json.trades && json.plan) {
-          if (window.confirm('Attention : Ceci va écraser vos données. Continuer ?')) {
-            (async () => {
-              try {
-                if (window.db && window.db.migrateFromLocalStorage) {
-                  await window.db.migrateFromLocalStorage(json);
-                  // refresh in-memory trades
-                  await reloadTrades();
-                } else {
-                  // fallback to localStorage
-                  localStorage.setItem('swing_trades', JSON.stringify(json.trades || []));
-                  localStorage.setItem('swing_accounts', JSON.stringify(json.accounts || []));
-                  localStorage.setItem('swing_plan', JSON.stringify(json.plan || null));
-                  localStorage.setItem('swing_macro_events', JSON.stringify(json.macroEvents || []));
-                  // reload the page to pick up local changes
-                  window.location.reload();
-                }
-                alert('Import réussi !');
-              } catch (err) {
-                console.error('Import error:', err);
-                alert('Échec de l\'import : ' + (err.message || err));
-              }
-            })();
-          }
-        } else {
-          alert('Format invalide.');
-        }
-      } catch (error) {
-        alert('Erreur fichier.');
+// ✅ CORRECTION: Remplacer la fonction handleImport dans App.jsx
+
+const handleImport = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const json = JSON.parse(e.target.result);
+      
+      // ✅ CORRECTION: Vérifier qu'il y a au moins une donnée
+      const hasData = json.trades || json.accounts || json.plan || json.macroEvents;
+      if (!hasData) {
+        alert('Aucune donnée valide trouvée dans le fichier.');
+        return;
       }
-    };
-    reader.readAsText(file);
-    event.target.value = null;
+      
+      console.log('📦 Import data:', {
+        trades: json.trades?.length || 0,
+        accounts: json.accounts?.length || 0,
+        macroEvents: json.macroEvents?.length || 0,
+        plan: !!json.plan
+      });
+      
+      if (window.confirm('Attention : Ceci va écraser vos données. Continuer ?')) {
+        try {
+          if (window.db && window.db.migrateFromLocalStorage) {
+            // Migration SQLite
+            await window.db.migrateFromLocalStorage(json);
+            
+            // ✅ CORRECTION: Recharger TOUT après l'import
+            console.log('✅ Migration terminée, rechargement...');
+            window.location.reload(); // Force un reload complet
+          } else {
+            // Fallback localStorage
+            if (json.trades) localStorage.setItem('swing_trades', JSON.stringify(json.trades));
+            if (json.accounts) localStorage.setItem('swing_accounts', JSON.stringify(json.accounts));
+            if (json.plan) localStorage.setItem('swing_plan', JSON.stringify(json.plan));
+            // ✅ CORRECTION: Ne pas oublier les macro events!
+            if (json.macroEvents) localStorage.setItem('swing_macro_events', JSON.stringify(json.macroEvents));
+            
+            window.location.reload();
+          }
+        } catch (err) {
+          console.error('Import error:', err);
+          alert('Échec de l\'import : ' + (err.message || err));
+        }
+      }
+    } catch (error) {
+      console.error('Parse error:', error);
+      alert('Erreur de lecture du fichier: ' + error.message);
+    }
   };
+  
+  reader.readAsText(file);
+  event.target.value = null;
+};
 
   // Listen for calendar navigation events to open Journal and scroll to a trade
-  React.useEffect(() => {
-    const handler = (e) => {
-      const tradeId = e?.detail;
-      if (!tradeId) return;
-      navigateTo(VIEWS.TRADING);
-      // wait for Journal to mount and then scroll
-      setTimeout(() => {
-        const el = document.getElementById(`trade-${tradeId}`);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
-    };
-    window.addEventListener('navigateToTrade', handler);
-    return () => window.removeEventListener('navigateToTrade', handler);
-  }, [navigateTo]);
+ React.useEffect(() => {
+  const handler = (e) => {
+    const tradeId = e?.detail;
+    if (!tradeId) return;
+    navigateTo(VIEWS.TRADING);
+    
+    // ✅ CORRECTION: Déclencher l'édition, pas juste le scroll
+    setTimeout(() => {
+      // Envoyer l'événement d'édition au Journal
+      const editEvent = new CustomEvent('editTrade', { detail: tradeId });
+      window.dispatchEvent(editEvent);
+    }, 300);
+  };
+  window.addEventListener('navigateToTrade', handler);
+  return () => window.removeEventListener('navigateToTrade', handler);
+}, [navigateTo]);
 
   // Show migration screen first
   if (!migrationComplete) {

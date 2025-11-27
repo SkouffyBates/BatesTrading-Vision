@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 /**
  * Custom hook for managing accounts with SQLite
+ * CORRECTION: Recharge correctement après création/suppression
  */
 export const useAccounts = (initialAccounts = []) => {
   const [accounts, setAccounts] = useState([]);
@@ -31,10 +32,19 @@ export const useAccounts = (initialAccounts = []) => {
     loadAccounts();
   }, []);
 
+  // ✅ CORRECTION: Recharger les comptes depuis la DB après création
   const addAccount = async (account) => {
     if (isElectron) {
-      const updated = await window.db.createAccount(account);
-      setAccounts(updated);
+      try {
+        await window.db.createAccount(account);
+        // Recharger la liste complète depuis la DB
+        const updated = await window.db.getAccounts();
+        setAccounts(updated || []);
+        console.log('✅ Account created and list refreshed');
+      } catch (error) {
+        console.error('Error creating account:', error);
+        alert('Erreur lors de la création du compte: ' + error.message);
+      }
     } else {
       const newAccounts = [...accounts, account];
       setAccounts(newAccounts);
@@ -42,10 +52,19 @@ export const useAccounts = (initialAccounts = []) => {
     }
   };
 
+  // ✅ CORRECTION: Recharger les comptes depuis la DB après suppression
   const deleteAccount = async (id) => {
     if (isElectron) {
-      const updated = await window.db.deleteAccount(id);
-      setAccounts(updated);
+      try {
+        await window.db.deleteAccount(id);
+        // Recharger la liste complète depuis la DB
+        const updated = await window.db.getAccounts();
+        setAccounts(updated || []);
+        console.log('✅ Account deleted and list refreshed');
+      } catch (error) {
+        console.error('Error deleting account:', error);
+        alert('Erreur lors de la suppression du compte: ' + error.message);
+      }
     } else {
       const newAccounts = accounts.filter((a) => a.id !== id);
       setAccounts(newAccounts);
