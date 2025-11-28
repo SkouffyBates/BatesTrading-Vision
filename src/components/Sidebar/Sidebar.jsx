@@ -45,7 +45,7 @@ const Sidebar = ({
       <aside className={`w-64 sidebar bg-slate-950 border-r border-slate-800 flex flex-col transform transition-transform z-50 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:w-64`}>
       <div className="sidebar-brand u-card">
         <h1 className="text-2xl font-extrabold tracking-tight brutal-title">
-          BatesTading<span className="font-light text-white">Vision</span>
+          BatesTrading<span className="font-light text-white">Vision</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1 neon-badge">Journal</p>
       </div>

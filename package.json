@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "com.swingtradepro.app",
-    "productName": "BatesTading Vision",
+    "productName": "BatesTrading Vision",
     "win": {
       "target": "nsis",
       "icon": "build/SwingTrade-Pro.ico"

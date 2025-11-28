@@ -13,7 +13,7 @@ Le `build.appId` et `productName` sont déjà configurés. Vérifier :
 {
   "build": {
     "appId": "com.swingtradepro.app",
-    "productName": "BatesTading Vision",
+    "productName": "BatesTrading Vision",
     "publish": {
       "provider": "github",
       "owner": "SkouffyBates",
@@ -40,7 +40,7 @@ $env:GH_TOKEN="votre_token_github"
 ### 4. **Créer un release sur GitHub** 📦
 1. Aller à https://github.com/SkouffyBates/BatesTrading-Vision/releases/new
 2. Tag version: `v1.0.1` (doit correspondre à `package.json` version)
-3. Title: "BatesTading Vision v1.0.1"
+3. Title: "BatesTrading Vision v1.0.1"
 4. Description: Notes de version
 5. Attacher le fichier `.exe` depuis `release/` dossier (après build)
 6. Cocher "Set as the latest release"
@@ -51,7 +51,7 @@ $env:GH_TOKEN="votre_token_github"
 # Compiler l'app Electron avec auto-updater
 npm run electron:build
 
-# Output: release/BatesTading Vision Setup 1.0.1.exe
+# Output: release/BatesTrading Vision Setup 1.0.1.exe
 ```
 
 ### 6. **Handler IPC pour l'updater** ✅ À AJOUTER
