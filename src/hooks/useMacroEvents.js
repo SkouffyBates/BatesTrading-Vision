@@ -31,6 +31,13 @@ export const useMacroEvents = (initialEvents = []) => {
     }
   };
 
+  // ✅ CORRECTION: Charger les events depuis la BD au montage du composant
+  useEffect(() => {
+    if (isElectron) {
+      loadEvents();
+    }
+  }, []);
+
   const addEvent = async (event) => {
     if (isElectron) {
       try {
