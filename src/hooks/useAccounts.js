@@ -15,13 +15,14 @@ export const useAccounts = (initialAccounts = []) => {
     const loadAccounts = async () => {
       if (isElectron) {
         try {
-          const dbAccounts = await window.db.getAccounts();
-          setAccounts(dbAccounts || []);
-        } catch (error) {
-          console.error('Error loading accounts:', error);
-          const saved = localStorage.getItem('swing_accounts');
-          setAccounts(saved ? JSON.parse(saved) : initialAccounts);
-        }
+            const dbAccounts = await window.db.getAccounts();
+            setAccounts(dbAccounts || []);
+          } catch (error) {
+            const toast = window.__addToast;
+            toast ? toast('Erreur en chargeant les comptes: ' + (error.message || ''), 'error') : console.error('Error loading accounts:', error);
+            const saved = localStorage.getItem('swing_accounts');
+            setAccounts(saved ? JSON.parse(saved) : initialAccounts);
+          }
       } else {
         const saved = localStorage.getItem('swing_accounts');
         setAccounts(saved ? JSON.parse(saved) : initialAccounts);
@@ -42,8 +43,8 @@ export const useAccounts = (initialAccounts = []) => {
         setAccounts(updated || []);
         console.log('✅ Account created and list refreshed');
       } catch (error) {
-        console.error('Error creating account:', error);
-        alert('Erreur lors de la création du compte: ' + error.message);
+        const toast = window.__addToast;
+        toast ? toast('Erreur lors de la création du compte: ' + (error.message || ''), 'error') : console.error('Error creating account:', error);
       }
     } else {
       const newAccounts = [...accounts, account];
@@ -62,8 +63,8 @@ export const useAccounts = (initialAccounts = []) => {
         setAccounts(updated || []);
         console.log('✅ Account deleted and list refreshed');
       } catch (error) {
-        console.error('Error deleting account:', error);
-        alert('Erreur lors de la suppression du compte: ' + error.message);
+        const toast = window.__addToast;
+        toast ? toast('Erreur lors de la suppression du compte: ' + (error.message || ''), 'error') : console.error('Error deleting account:', error);
       }
     } else {
       const newAccounts = accounts.filter((a) => a.id !== id);

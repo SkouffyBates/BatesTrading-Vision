@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import Skeleton from '../Common/Skeleton';
 import { Plus, Eye, ImageIcon, Pencil, Trash2, List, Grid } from 'lucide-react';
+import { validateTrade } from '../../utils/validators';
+import { useSettings } from '../../hooks/useSettings';
 
 /**
  * Trading Journal - Table & Gallery views
@@ -10,6 +13,8 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
   const [editingId, setEditingId] = useState(null);
   const [viewMode, setViewMode] = useState('table');
   const [pnlMode, setPnlMode] = useState('usd');
+  const { settings } = useSettings();
+  const globalPlMode = settings?.plDisplay || 'usd';
 
   const [formData, setFormData] = useState({
     accountId: currentAccountId !== 'all' ? currentAccountId : accounts[0]?.id || '',
@@ -95,25 +100,56 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
     e.preventDefault();
     const riskAmount = parseFloat(formData.risk) || 0;
     
+    // Guard: Risk must be positive
+    if (riskAmount <= 0) {
+      const toast = window.__addToast;
+      if (toast) {
+        toast('Erreur: Le risque doit être supérieur à 0', 'error');
+      }
+      return;
+    }
+    
     let pnlAmount = parseFloat(formData.pnl) || 0;
     if (pnlMode === 'percent') {
       const percentValue = parseFloat(formData.pnlPercent) || 0;
       pnlAmount = (riskAmount * percentValue) / 100;
     }
     
-    const rMultiple = riskAmount > 0 ? (pnlAmount / riskAmount).toFixed(2) : 0;
+    const rMultiple = (pnlAmount / riskAmount).toFixed(2);
     const tradeData = {
       ...formData,
       risk: riskAmount,
       pnl: pnlAmount,
-      r: rMultiple
+      r: rMultiple,
     };
-    if (editingId) {
-      onEditTrade({ ...tradeData, id: editingId });
-    } else {
-      onAddTrade({ ...tradeData, id: Date.now() });
+
+    // Validate trade before save
+    const { isValid, errors } = validateTrade(tradeData);
+    if (!isValid) {
+      const toast = window.__addToast;
+      if (toast) {
+        errors.forEach((err) => toast(err, 'error'));
+      } else {
+        console.error('Validation errors:', errors.join('\n'));
+      }
+      return;
     }
-    setIsModalOpen(false);
+
+    try {
+      if (editingId) {
+        onEditTrade({ ...tradeData, id: editingId });
+      } else {
+        onAddTrade({ ...tradeData, id: Date.now() });
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      const toast = window.__addToast;
+      if (toast) {
+        toast(`Erreur lors de la sauvegarde: ${error.message || 'Unknown error'}`, 'error');
+      } else {
+        console.error('Save error:', error);
+      }
+    }
   };
 
   return (
@@ -155,224 +191,108 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
       </div>
 
       {viewMode === 'table' ? (
-        <div className="u-card rounded-xl overflow-hidden shadow-lg">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-slate-300">
-              <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs font-bold">
-                <tr>
-                  <th className="px-4 py-4">Open</th>
-                  <th className="px-4 py-4">Market</th>
-                  <th className="px-4 py-4">Dir</th>
-                  <th className="px-4 py-4">Size</th>
-                  <th className="px-4 py-4 text-center">Res</th>
-                  <th className="px-4 py-4 text-right">P&L</th>
-                  <th className="px-4 py-4 text-center">Shots</th>
-                  {currentAccountId === 'all' && <th className="px-4 py-4 text-center">Compte</th>}
-                  <th className="px-4 py-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700">
-                {trades
-                  .slice()
-                  .reverse()
-                  .map((trade) => (
-                    <tr
-                      key={trade.id}
-                      id={`trade-${trade.id}`}
-                      className="hover:bg-slate-700/30 transition-colors"
-                    >
-                      <td className="px-4 py-4 text-sm whitespace-nowrap">
-                        {trade.openDate}
-                      </td>
+        (!trades || trades.length === 0) ? (
+          <div className="grid grid-cols-1 gap-4">
+            <Skeleton className="h-14 rounded-lg" />
+            <Skeleton className="h-14 rounded-lg" />
+            <Skeleton className="h-14 rounded-lg" />
+          </div>
+        ) : (
+          <div className="u-card rounded-xl overflow-hidden shadow-lg">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-slate-300">
+                <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs font-bold">
+                  <tr>
+                    <th className="px-4 py-4">Open</th>
+                    <th className="px-4 py-4">Market</th>
+                    <th className="px-4 py-4">Dir</th>
+                    <th className="px-4 py-4">Size</th>
+                    <th className="px-4 py-4 text-center">Res</th>
+                    <th className="px-4 py-4 text-right">P&L</th>
+                    <th className="px-4 py-4 text-center">Shots</th>
+                    {currentAccountId === 'all' && <th className="px-4 py-4 text-center">Compte</th>}
+                    <th className="px-4 py-4 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700">
+                  {trades.slice().reverse().map((trade) => (
+                    <tr key={trade.id} id={`trade-${trade.id}`} className="hover:bg-slate-700/30 transition-colors">
+                      <td className="px-4 py-4 text-sm whitespace-nowrap">{trade.openDate}</td>
                       <td className="px-4 py-4 font-bold text-white">{trade.pair}</td>
                       <td className="px-4 py-4">
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            trade.direction === 'Long'
-                              ? 'bg-cyan-500/20 text-cyan-400'
-                              : 'bg-orange-500/20 text-orange-400'
-                          }`}
-                        >
-                          {trade.direction}
-                        </span>
+                        <span className={`px-2 py-1 rounded text-xs ${trade.direction === 'Long' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-orange-500/20 text-orange-400'}`}>{trade.direction}</span>
                       </td>
-                      <td className="px-4 py-4 text-sm text-slate-400">
-                        {trade.positionSize || '-'}
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${
-                            trade.pnl > 0
-                              ? 'text-emerald-400'
-                              : 'text-red-400'
-                          }`}
-                        >
-                          {trade.pnl > 0 ? 'W' : 'L'}
-                        </span>
-                      </td>
-                      <td
-                        className={`px-4 py-4 text-right font-mono font-bold ${
-                          trade.pnl > 0
-                            ? 'text-emerald-400'
-                            : 'text-red-400'
-                        }`}
-                      >
-                        {trade.pnl > 0 ? '+' : ''}
-                        {trade.pnl}
-                      </td>
+                      <td className="px-4 py-4 text-sm text-slate-400">{trade.positionSize || '-'}</td>
+                      <td className="px-4 py-4 text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${trade.pnl > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{trade.pnl > 0 ? 'W' : 'L'}</span></td>
+                      {(() => {
+                        const mode = globalPlMode || 'usd';
+                        const pnlNum = parseFloat(trade.pnl) || 0;
+                        const riskNum = parseFloat(trade.risk) || 0;
+                        const display = mode === 'usd' ? `${pnlNum > 0 ? '+' : ''}${pnlNum}` : `${(riskNum ? ((pnlNum / riskNum) * 100) : 0) >= 0 ? '+' : ''}${((riskNum ? ((pnlNum / riskNum) * 100) : 0)).toFixed(2)}%`;
+                        const positive = mode === 'usd' ? pnlNum > 0 : (riskNum ? ((pnlNum / riskNum) * 100) : 0) > 0;
+                        return (
+                          <td className={`px-4 py-4 text-right font-mono font-bold ${positive ? 'text-emerald-400' : 'text-red-400'}`}>{display}</td>
+                        );
+                      })()}
                       <td className="px-4 py-4 text-center">
                         <div className="flex justify-center gap-2">
-                          {trade.screenshotBefore ? (
-                            <a
-                              href={trade.screenshotBefore}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-cyan-400 hover:text-cyan-300"
-                            >
-                              <Eye size={16} />
-                            </a>
-                          ) : (
-                            <span className="w-4"></span>
-                          )}
-                          {trade.screenshotAfter ? (
-                            <a
-                              href={trade.screenshotAfter}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-purple-400 hover:text-purple-300"
-                            >
-                              <ImageIcon size={16} />
-                            </a>
-                          ) : (
-                            <span className="w-4"></span>
-                          )}
+                          {trade.screenshotBefore ? (<a href={trade.screenshotBefore} target="_blank" rel="noreferrer" className="text-cyan-400 hover:text-cyan-300"><Eye size={16} /></a>) : (<span className="w-4"></span>)}
+                          {trade.screenshotAfter ? (<a href={trade.screenshotAfter} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300"><ImageIcon size={16} /></a>) : (<span className="w-4"></span>)}
                         </div>
                       </td>
-                      {currentAccountId === 'all' && (
-                        <td className="px-4 py-4 text-center">
-                          <span className="text-xs text-slate-500 border border-slate-700 px-2 py-1 rounded">
-                            {accounts.find((a) => a.id === trade.accountId)
-                              ?.name || 'N/A'}
-                          </span>
-                        </td>
-                      )}
+                      {currentAccountId === 'all' && (<td className="px-4 py-4 text-center"><span className="text-xs text-slate-500 border border-slate-700 px-2 py-1 rounded">{accounts.find((a) => a.id === trade.accountId)?.name || 'N/A'}</span></td>)}
                       <td className="px-4 py-4 text-center flex justify-center gap-2">
-                        <button
-                          onClick={() => openEditTradeModal(trade)}
-                          className="text-slate-500 hover:text-cyan-400 transition-colors"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => onDeleteTrade(trade.id)}
-                          className="text-slate-500 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <button onClick={() => openEditTradeModal(trade)} className="text-slate-500 hover:text-cyan-400 transition-colors"><Pencil size={16} /></button>
+                        <button onClick={() => onDeleteTrade(trade.id)} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
                       </td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
-          {trades
-            .slice()
-            .reverse()
-            .map((trade) => (
-              <div
-                key={trade.id}
-                className="u-card rounded-xl overflow-hidden shadow-lg flex flex-col hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="h-48 bg-slate-900 relative group">
-                  {trade.screenshotBefore || trade.screenshotAfter ? (
-                    <img
-                      src={
-                        trade.screenshotAfter ||
-                        trade.screenshotBefore
-                      }
-                      alt="Chart"
-                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-600">
-                      <ImageIcon size={48} />
-                    </div>
-                  )}
-                  <div
-                    className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${
-                      trade.pnl > 0
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-red-500 text-white'
-                    }`}
-                  >
-                    {trade.pnl > 0 ? '+' : ''}
-                    {trade.pnl}$
-                  </div>
-                  <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 backdrop-blur rounded text-xs text-white">
-                    {trade.pair} • {trade.direction}
-                  </div>
+                {trades.slice().reverse().map((trade) => (
+            <div key={trade.id} className="u-card rounded-xl overflow-hidden shadow-lg flex flex-col hover:border-cyan-500/50 transition-colors">
+              <div className="h-48 bg-slate-900 relative group">
+                {trade.screenshotBefore || trade.screenshotAfter ? (
+                  <img src={trade.screenshotAfter || trade.screenshotBefore} alt="Chart" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" onError={(e) => { e.target.style.display = 'none'; }} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-600"><ImageIcon size={48} /></div>
+                )}
+                {(() => {
+                  const mode = globalPlMode || 'usd';
+                  const pnlNum = parseFloat(trade.pnl) || 0;
+                  const riskNum = parseFloat(trade.risk) || 0;
+                  const positive = pnlNum > 0;
+                  const display = mode === 'usd' ? `${pnlNum > 0 ? '+' : ''}${pnlNum}$` : `${(riskNum ? ((pnlNum / riskNum) * 100) : 0) >= 0 ? '+' : ''}${((riskNum ? ((pnlNum / riskNum) * 100) : 0)).toFixed(2)}%`;
+                  return (
+                    <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${positive ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>{display}</div>
+                  );
+                })()}
+                <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 backdrop-blur rounded text-xs text-white">{trade.pair} • {trade.direction}</div>
+              </div>
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-bold text-white text-lg">{trade.setup || 'Setup Inconnu'}</h4>
+                  <span className="text-xs text-slate-500">{trade.openDate}</span>
                 </div>
-                <div className="p-4 flex-1 flex flex-col">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-white text-lg">
-                      {trade.setup || 'Setup Inconnu'}
-                    </h4>
-                    <span className="text-xs text-slate-500">
-                      {trade.openDate}
-                    </span>
+                <p className="text-sm text-slate-400 line-clamp-2 mb-4 flex-1 italic">"{trade.notes}"</p>
+                <div className="flex justify-between items-center pt-3 border-t border-slate-700">
+                  <div className="flex gap-2">
+                    {trade.screenshotBefore && (<a href={trade.screenshotBefore} target="_blank" className="p-2 bg-slate-700 rounded hover:bg-slate-600 text-cyan-400" title="Avant" rel="noreferrer"><Eye size={16} /></a>)}
+                    {trade.screenshotAfter && (<a href={trade.screenshotAfter} target="_blank" className="p-2 bg-slate-700 rounded hover:bg-slate-600 text-purple-400" title="Après" rel="noreferrer"><ImageIcon size={16} /></a>)}
                   </div>
-                  <p className="text-sm text-slate-400 line-clamp-2 mb-4 flex-1 italic">
-                    "{trade.notes}"
-                  </p>
-                  <div className="flex justify-between items-center pt-3 border-t border-slate-700">
-                    <div className="flex gap-2">
-                      {trade.screenshotBefore && (
-                        <a
-                          href={trade.screenshotBefore}
-                          target="_blank"
-                          className="p-2 bg-slate-700 rounded hover:bg-slate-600 text-cyan-400"
-                          title="Avant"
-                          rel="noreferrer"
-                        >
-                          <Eye size={16} />
-                        </a>
-                      )}
-                      {trade.screenshotAfter && (
-                        <a
-                          href={trade.screenshotAfter}
-                          target="_blank"
-                          className="p-2 bg-slate-700 rounded hover:bg-slate-600 text-purple-400"
-                          title="Après"
-                          rel="noreferrer"
-                        >
-                          <ImageIcon size={16} />
-                        </a>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditTradeModal(trade)}
-                        className="text-slate-500 hover:text-cyan-400"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => onDeleteTrade(trade.id)}
-                        className="text-slate-500 hover:text-red-400"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEditTradeModal(trade)} className="text-slate-500 hover:text-cyan-400"><Pencil size={16} /></button>
+                    <button onClick={() => onDeleteTrade(trade.id)} className="text-slate-500 hover:text-red-400"><Trash2 size={16} /></button>
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       )}
 

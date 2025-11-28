@@ -9,7 +9,11 @@ import TradingPlan from './components/TradingPlan/TradingPlan';
 import MacroEdge from './components/MacroEdge/MacroEdge';
 import Sidebar from './components/Sidebar/Sidebar';
 import AccountModal from './components/Common/AccountModal';
-import MigrationHelper from './components/Common/MigrationHelper';
+import SplashScreen from './components/Common/SplashScreen';
+import Updater from './components/Common/Updater';
+import { ToastProvider } from './hooks/useToast';
+import { SettingsProvider } from './hooks/useSettings';
+import ErrorBoundary from './components/Common/ErrorBoundary';
 
 // Hooks (now with SQLite support)
 import useTrades from './hooks/useTrades';
@@ -101,7 +105,8 @@ const handleImport = (event) => {
       // ✅ CORRECTION: Vérifier qu'il y a au moins une donnée
       const hasData = json.trades || json.accounts || json.plan || json.macroEvents;
       if (!hasData) {
-        alert('Aucune donnée valide trouvée dans le fichier.');
+        const toast = window.__addToast;
+        toast ? toast('Aucune donnée valide trouvée dans le fichier.', 'error') : console.error('Aucune donnée valide trouvée dans le fichier.');
         return;
       }
       
@@ -133,12 +138,14 @@ const handleImport = (event) => {
           }
         } catch (err) {
           console.error('Import error:', err);
-          alert('Échec de l\'import : ' + (err.message || err));
+          const toast = window.__addToast;
+          toast ? toast('Échec de l\'import : ' + (err.message || ''), 'error') : console.error('Échec de l\'import : ' + (err.message || err));
         }
       }
     } catch (error) {
       console.error('Parse error:', error);
-      alert('Erreur de lecture du fichier: ' + error.message);
+      const toast = window.__addToast;
+      toast ? toast('Erreur de lecture du fichier: ' + (error.message || ''), 'error') : console.error('Erreur de lecture du fichier: ' + error.message);
     }
   };
   
@@ -163,10 +170,17 @@ const handleImport = (event) => {
   window.addEventListener('navigateToTrade', handler);
   return () => window.removeEventListener('navigateToTrade', handler);
 }, [navigateTo]);
-
-  // Show migration screen first
+  // Show splash screen first (handles silent migration)
   if (!migrationComplete) {
-    return <MigrationHelper onComplete={() => setMigrationComplete(true)} />;
+    return (
+      <ToastProvider>
+        <SettingsProvider>
+          <ErrorBoundary>
+            <SplashScreen onComplete={() => setMigrationComplete(true)} />
+          </ErrorBoundary>
+        </SettingsProvider>
+      </ToastProvider>
+    );
   }
 
   // Show loading screen while data loads
@@ -182,7 +196,10 @@ const handleImport = (event) => {
   }
 
   return (
-    <div className="flex h-screen app-root text-slate-100 font-sans overflow-hidden">
+    <ToastProvider>
+      <SettingsProvider>
+        <ErrorBoundary>
+          <div className="flex h-screen app-root text-slate-100 font-sans overflow-hidden">
       <Sidebar
         currentView={currentView}
         onViewChange={navigateTo}
@@ -227,6 +244,7 @@ const handleImport = (event) => {
               trades={displayedTrades}
               accounts={accounts}
               currentAccountId={currentAccountId}
+              plan={plan}
             />
           )}
 
@@ -264,7 +282,10 @@ const handleImport = (event) => {
         </div>
       </main>
 
-      <AccountModal
+        {/* Updater UI */}
+        <Updater />
+
+        <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
         accounts={accounts}
@@ -279,7 +300,10 @@ const handleImport = (event) => {
         className="hidden"
         accept=".json"
       />
-    </div>
+          </div>
+        </ErrorBoundary>
+      </SettingsProvider>
+    </ToastProvider>
   );
 };
 

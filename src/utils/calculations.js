@@ -17,26 +17,30 @@ export const filterTradesByTime = (trades, timeFilter) => {
 };
 
 export const calculateStats = (trades, accounts, currentAccountId) => {
-  const totalTrades = trades.length;
-  const wins = trades.filter(t => t.pnl > 0).length;
-  const losses = trades.filter(t => t.pnl <= 0).length;
+  // Guard against null/undefined inputs
+  const safeTrades = Array.isArray(trades) ? trades : [];
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
+  
+  const totalTrades = safeTrades.length;
+  const wins = safeTrades.filter(t => t.pnl > 0).length;
+  const losses = safeTrades.filter(t => t.pnl <= 0).length;
   const winRate = totalTrades ? ((wins / totalTrades) * 100).toFixed(1) : 0;
-  const totalPnL = trades.reduce((acc, curr) => acc + parseFloat(curr.pnl), 0);
-  const grossProfit = trades.filter(t => t.pnl > 0).reduce((acc, t) => acc + t.pnl, 0);
-  const grossLoss = Math.abs(trades.filter(t => t.pnl < 0).reduce((acc, t) => acc + t.pnl, 0));
-  const profitFactor = grossLoss === 0 ? grossProfit : (grossProfit / grossLoss).toFixed(2);
+  const totalPnL = safeTrades.reduce((acc, curr) => acc + parseFloat(curr.pnl || 0), 0);
+  const grossProfit = safeTrades.filter(t => t.pnl > 0).reduce((acc, t) => acc + parseFloat(t.pnl || 0), 0);
+  const grossLoss = Math.abs(safeTrades.filter(t => t.pnl < 0).reduce((acc, t) => acc + parseFloat(t.pnl || 0), 0));
+  const profitFactor = grossLoss === 0 ? (grossProfit > 0 ? grossProfit : 0) : (grossProfit / grossLoss).toFixed(2);
 
   let startBalance = 0;
   if (currentAccountId !== 'all') {
-    const acc = accounts.find(a => a.id === currentAccountId);
-    startBalance = acc ? parseFloat(acc.balance) : 0;
+    const acc = safeAccounts.find(a => a.id === currentAccountId);
+    startBalance = acc ? parseFloat(acc.balance || 0) : 0;
   } else {
-    startBalance = accounts.reduce((acc, curr) => acc + parseFloat(curr.balance), 0);
+    startBalance = safeAccounts.reduce((acc, curr) => acc + parseFloat(curr.balance || 0), 0);
   }
 
   let currentEquity = startBalance;
-  const equityCurve = trades.map((t, index) => {
-    currentEquity += parseFloat(t.pnl);
+  const equityCurve = safeTrades.map((t, index) => {
+    currentEquity += parseFloat(t.pnl || 0);
     return { name: `T${index + 1}`, equity: currentEquity };
   });
 
@@ -46,22 +50,22 @@ export const calculateStats = (trades, accounts, currentAccountId) => {
     equityCurve.unshift({ name: 'Start', equity: startBalance });
   }
 
-  const allTimePnL = trades.reduce((acc, curr) => acc + parseFloat(curr.pnl), 0);
+  const allTimePnL = safeTrades.reduce((acc, curr) => acc + parseFloat(curr.pnl || 0), 0);
   const trueCurrentBalance = (currentAccountId === 'all'
-    ? accounts.reduce((acc, curr) => acc + parseFloat(curr.balance), 0)
-    : (accounts.find(a => a.id === currentAccountId)?.balance || 0)) + allTimePnL;
+    ? safeAccounts.reduce((acc, curr) => acc + parseFloat(curr.balance || 0), 0)
+    : (safeAccounts.find(a => a.id === currentAccountId)?.balance || 0)) + allTimePnL;
 
   return {
     winRate,
-    totalPnL,
-    profitFactor,
+    totalPnL: isNaN(totalPnL) ? 0 : totalPnL,
+    profitFactor: isNaN(profitFactor) ? 0 : profitFactor,
     totalTrades,
     equityCurve,
     wins,
     losses,
-    trueCurrentBalance,
-    grossProfit,
-    grossLoss
+    trueCurrentBalance: isNaN(trueCurrentBalance) ? startBalance : trueCurrentBalance,
+    grossProfit: isNaN(grossProfit) ? 0 : grossProfit,
+    grossLoss: isNaN(grossLoss) ? 0 : grossLoss
   };
 };
 

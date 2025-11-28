@@ -16,9 +16,15 @@ import {
   getAllMacroEvents,
   createMacroEvent,
   deleteMacroEvent,
+  cleanOldMacroEvents,
+  cleanOldTrades,
   migrateFromLocalStorage,
   loadLegacyData,
+  getSetting,
+  setSetting,
 } from './database.js';
+
+let autoUpdater = null;
 
 // Normalize DB trade row (snake_case) to renderer-friendly camelCase
 const normalizeTradeRow = (row) => {
@@ -80,7 +86,29 @@ const __dirname = path.dirname(__filename);
 // Initialize database when app is ready
 app.whenReady().then(() => {
   initDatabase();
+  // Clean up old data (before 2024) at startup
+  cleanOldMacroEvents('2024-01-01');
+  cleanOldTrades('2024-01-01');
   setupIpcHandlers();
+  // Try to initialize electron-updater if available
+  (async () => {
+    try {
+      const mod = await import('electron-updater');
+      // Accept different export shapes (named export, default, or module itself)
+      const au = mod && (mod.autoUpdater || mod.default || mod);
+      if (!au) throw new Error('no-auto-updater-found');
+      autoUpdater = au;
+      try { autoUpdater.autoDownload = false; } catch (e) { /* ignore if not configurable */ }
+      autoUpdater.on && autoUpdater.on('update-available', (info) => mainWindow && mainWindow.webContents.send('update:available', info));
+      autoUpdater.on && autoUpdater.on('update-not-available', (info) => mainWindow && mainWindow.webContents.send('update:not-available', info));
+      autoUpdater.on && autoUpdater.on('error', (err) => mainWindow && mainWindow.webContents.send('update:error', { message: err == null ? '' : (err.message || String(err)) }));
+      autoUpdater.on && autoUpdater.on('download-progress', (progress) => mainWindow && mainWindow.webContents.send('update:progress', progress));
+      autoUpdater.on && autoUpdater.on('update-downloaded', (info) => mainWindow && mainWindow.webContents.send('update:downloaded', info));
+      console.log('✅ electron-updater loaded');
+    } catch (e) {
+      console.log('electron-updater not available:', e && e.message ? e.message : e);
+    }
+  })();
   createWindow();
 });
 
@@ -129,6 +157,40 @@ function setupIpcHandlers() {
   // ==================== MIGRATION ====================
   ipcMain.handle('db:migrateFromLocalStorage', (event, data) => migrateFromLocalStorage(data));
   ipcMain.handle('db:loadLegacyData', () => loadLegacyData());
+  // Settings handlers
+  ipcMain.handle('db:getSetting', (event, key) => getSetting(key));
+  ipcMain.handle('db:setSetting', (event, key, value) => setSetting(key, value));
+
+  // ==================== UPDATES (guarded) ====================
+  ipcMain.handle('app:checkForUpdates', async () => {
+    if (!autoUpdater) return { ok: false, message: 'updater-not-installed' };
+    try {
+      autoUpdater.checkForUpdates();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: e.message };
+    }
+  });
+
+  ipcMain.handle('app:downloadUpdate', async () => {
+    if (!autoUpdater) return { ok: false, message: 'updater-not-installed' };
+    try {
+      autoUpdater.downloadUpdate();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: e.message };
+    }
+  });
+
+  ipcMain.handle('app:quitAndInstall', async () => {
+    if (!autoUpdater) return { ok: false, message: 'updater-not-installed' };
+    try {
+      autoUpdater.quitAndInstall();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: e.message };
+    }
+  });
 }
 
 app.on('window-all-closed', () => {

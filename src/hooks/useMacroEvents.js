@@ -5,22 +5,58 @@ import { useState, useEffect, useMemo } from 'react';
  * Includes risk sentiment calculation
  */
 export const useMacroEvents = (initialEvents = []) => {
+  const isElectron = typeof window !== 'undefined' && window.db;
   const [events, setEvents] = useState(() => {
+    if (isElectron) return initialEvents;
     const saved = localStorage.getItem('swing_macro_events');
     return saved ? JSON.parse(saved) : initialEvents;
   });
 
-  // Persist to localStorage
+  // Persist or sync to DB
   useEffect(() => {
+    if (isElectron) return;
     localStorage.setItem('swing_macro_events', JSON.stringify(events));
   }, [events]);
 
-  const addEvent = (event) => {
-    setEvents([...events, { id: Date.now(), ...event }]);
+  const loadEvents = async () => {
+    if (isElectron) {
+      try {
+        const rows = await window.db.getMacroEvents();
+        setEvents(rows || []);
+        return;
+      } catch (err) {
+        const toast = window.__addToast;
+        toast ? toast('Erreur en chargeant les macro events: ' + (err.message || ''), 'error') : console.error('Error loading macro events:', err);
+      }
+    }
   };
 
-  const deleteEvent = (id) => {
-    setEvents(events.filter((e) => e.id !== id));
+  const addEvent = async (event) => {
+    if (isElectron) {
+      try {
+        await window.db.createMacroEvent(event);
+        await loadEvents();
+      } catch (err) {
+        const toast = window.__addToast;
+        toast ? toast('Erreur en ajoutant l\'événement macro: ' + (err.message || ''), 'error') : console.error('Error creating macro event:', err);
+      }
+    } else {
+      setEvents([...events, { id: Date.now(), ...event }]);
+    }
+  };
+
+  const deleteEvent = async (id) => {
+    if (isElectron) {
+      try {
+        await window.db.deleteMacroEvent(id);
+        await loadEvents();
+      } catch (err) {
+        const toast = window.__addToast;
+        toast ? toast('Erreur en supprimant l\'événement macro: ' + (err.message || ''), 'error') : console.error('Error deleting macro event:', err);
+      }
+    } else {
+      setEvents(events.filter((e) => e.id !== id));
+    }
   };
 
   // Calculate risk sentiment score

@@ -170,6 +170,14 @@ const createTables = () => {
     )
   `);
 
+  // App settings table (key/value)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )
+  `);
+
   console.log('✅ All tables created');
 };
 
@@ -293,51 +301,201 @@ export const deleteMacroEvent = (id) => {
   return stmt.run(id);
 };
 
+export const cleanOldMacroEvents = (beforeDate = '2024-01-01') => {
+  try {
+    const stmt = db.prepare('DELETE FROM macro_events WHERE date < ?');
+    const result = stmt.run(beforeDate);
+    console.log(`✅ Deleted ${result.changes} macro events before ${beforeDate}`);
+    return result.changes;
+  } catch (e) {
+    console.error('Error cleaning old macro events:', e);
+    return 0;
+  }
+};
+
+export const cleanOldTrades = (beforeDate = '2024-01-01') => {
+  try {
+    const stmt = db.prepare('DELETE FROM trades WHERE open_date < ?');
+    const result = stmt.run(beforeDate);
+    console.log(`✅ Deleted ${result.changes} trades before ${beforeDate}`);
+    return result.changes;
+  } catch (e) {
+    console.error('Error cleaning old trades:', e);
+    return 0;
+  }
+};
+
+// ==================== SETTINGS ====================
+export const getSetting = (key) => {
+  try {
+    const stmt = db.prepare('SELECT value FROM app_settings WHERE key = ?');
+    const row = stmt.get(key);
+    return row ? row.value : null;
+  } catch (e) {
+    console.error('Error reading setting', key, e);
+    return null;
+  }
+};
+
+export const setSetting = (key, value) => {
+  try {
+    const up = db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+    return up.run(key, String(value));
+  } catch (e) {
+    console.error('Error saving setting', key, e);
+    return null;
+  }
+};
+
 // ==================== MIGRATION ====================
 
 export const migrateFromLocalStorage = (data) => {
+  // Normalize incoming objects and dedupe before inserting
+  const result = {
+    accounts: { inserted: 0, skipped: 0 },
+    trades: { inserted: 0, skipped: 0 },
+    macroEvents: { inserted: 0, skipped: 0 },
+    planInserted: false,
+  };
+
   const transaction = db.transaction(() => {
-    // Migrate accounts
-    if (data.accounts) {
-      data.accounts.forEach(account => {
-        try {
-          createAccount(account);
-        } catch (e) {
-          console.log('Account already exists:', account.id);
+    // Helper normalizers
+    const normAccount = (a) => ({
+      id: a.id || a._id || a.uuid || String(Date.now() + Math.random()),
+      name: a.name || a.label || 'Compte',
+      balance: parseFloat(a.balance || a.amount || 0) || 0,
+      currency: a.currency || a.currency_code || '$',
+    });
+
+    const normTrade = (t) => ({
+      id: t.id != null ? t.id : null,
+      accountId: t.account_id || t.accountId || t.account || 'unknown',
+      openDate: t.open_date || t.openDate || t.date || null,
+      closeDate: t.close_date || t.closeDate || t.closed_at || null,
+      pair: t.pair || t.symbol || '',
+      direction: t.direction || t.side || 'LONG',
+      positionSize: t.position_size || t.positionSize || t.position_size_text || null,
+      setup: t.setup || t.strategy || null,
+      risk: t.risk != null ? parseFloat(t.risk) : null,
+      pnl: t.pnl != null ? parseFloat(t.pnl) : 0,
+      r: t.r != null ? parseFloat(t.r) : null,
+      notes: t.notes || t.note || null,
+      psychology: t.psychology || null,
+      screenshotBefore: t.screenshot_before || t.screenshotBefore || t.screenshot || null,
+      screenshotAfter: t.screenshot_after || t.screenshotAfter || null,
+    });
+
+    const normMacro = (m) => ({
+      id: m.id != null ? m.id : null,
+      date: m.date || m.event_date || null,
+      event: m.event || m.title || '',
+      category: m.category || m.type || 'Other',
+      actual: m.actual != null ? parseFloat(m.actual) : 0,
+      forecast: m.forecast != null ? parseFloat(m.forecast) : 0,
+      previous: m.previous != null ? parseFloat(m.previous) : null,
+      impact: m.impact || 'Medium',
+    });
+
+    // Migrate accounts with dedupe by id
+    if (data.accounts && Array.isArray(data.accounts)) {
+      const checkAcct = db.prepare('SELECT 1 FROM accounts WHERE id = ?');
+      data.accounts.forEach(raw => {
+        const a = normAccount(raw);
+        const exists = checkAcct.get(a.id);
+        if (exists) {
+          result.accounts.skipped += 1;
+        } else {
+          try {
+            createAccount(a);
+            result.accounts.inserted += 1;
+          } catch (e) {
+            result.accounts.skipped += 1;
+          }
         }
       });
     }
 
-    // Migrate trades
-    if (data.trades) {
-      data.trades.forEach(trade => {
-        try {
-          createTrade(trade);
-        } catch (e) {
-          console.log('Trade already exists:', trade.id);
+    // Migrate trades with dedupe by id or signature
+    if (data.trades && Array.isArray(data.trades)) {
+      const checkById = db.prepare('SELECT 1 FROM trades WHERE id = ?');
+      const checkBySig = db.prepare('SELECT id FROM trades WHERE account_id = ? AND open_date = ? AND pair = ? AND direction = ? LIMIT 1');
+      data.trades.forEach(raw => {
+        const t = normTrade(raw);
+        let skip = false;
+        if (t.id != null) {
+          const exists = checkById.get(t.id);
+          if (exists) skip = true;
+        } else {
+          // signature-based dedupe
+          const found = checkBySig.get(t.accountId, t.openDate, t.pair, t.direction);
+          if (found) skip = true;
+        }
+
+        if (skip) {
+          result.trades.skipped += 1;
+        } else {
+          try {
+            // createTrade expects camelCase keys matching prepared statement params
+            createTrade(t);
+            result.trades.inserted += 1;
+          } catch (e) {
+            result.trades.skipped += 1;
+          }
         }
       });
     }
 
-    // Migrate trading plan
+    // Migrate trading plan (replace existing)
     if (data.plan) {
-      saveTradingPlan(data.plan);
+      try {
+        saveTradingPlan(data.plan);
+        result.planInserted = true;
+      } catch (e) {
+        result.planInserted = false;
+      }
     }
 
-    // Migrate macro events
-    if (data.macroEvents) {
-      data.macroEvents.forEach(event => {
-        try {
-          createMacroEvent(event);
-        } catch (e) {
-          console.log('Event already exists:', event.id);
+    // Migrate macro events with dedupe by id or (date+event) - Filter out old events (before 2024)
+    if (data.macroEvents && Array.isArray(data.macroEvents)) {
+      const checkById = db.prepare('SELECT 1 FROM macro_events WHERE id = ?');
+      const checkBySig = db.prepare('SELECT 1 FROM macro_events WHERE date = ? AND event = ? LIMIT 1');
+      const cutoffDate = '2024-01-01'; // Only keep events from 2024 onwards
+      
+      data.macroEvents.forEach(raw => {
+        const m = normMacro(raw);
+        
+        // Skip old events (before 2024)
+        if (m.date && m.date < cutoffDate) {
+          result.macroEvents.skipped += 1;
+          return;
+        }
+        
+        let skip = false;
+        if (m.id != null) {
+          const exists = checkById.get(m.id);
+          if (exists) skip = true;
+        } else {
+          const exists = checkBySig.get(m.date, m.event);
+          if (exists) skip = true;
+        }
+
+        if (skip) {
+          result.macroEvents.skipped += 1;
+        } else {
+          try {
+            createMacroEvent(m);
+            result.macroEvents.inserted += 1;
+          } catch (e) {
+            result.macroEvents.skipped += 1;
+          }
         }
       });
     }
   });
 
   transaction();
-  console.log('✅ Migration completed');
+  console.log('✅ Migration completed', result);
+  return result;
 };
 
 export const closeDatabase = () => {

@@ -25,4 +25,19 @@ contextBridge.exposeInMainWorld('db', {
   // Migration
   migrateFromLocalStorage: (data) => ipcRenderer.invoke('db:migrateFromLocalStorage', data),
   loadLegacyData: () => ipcRenderer.invoke('db:loadLegacyData'),
+  // Settings
+  getSetting: (key) => ipcRenderer.invoke('db:getSetting', key),
+  setSetting: (key, value) => ipcRenderer.invoke('db:setSetting', key, value),
+});
+
+// Expose updater API (guarded) to renderer
+contextBridge.exposeInMainWorld('updater', {
+  checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates'),
+  downloadUpdate: () => ipcRenderer.invoke('app:downloadUpdate'),
+  quitAndInstall: () => ipcRenderer.invoke('app:quitAndInstall'),
+  on: (channel, cb) => {
+    const listener = (event, data) => cb(data);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  }
 });

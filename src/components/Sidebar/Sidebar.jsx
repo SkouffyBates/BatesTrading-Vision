@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   BookOpen,
@@ -9,8 +9,10 @@ import {
   Plus,
   Download,
   Upload
+  , Settings
 } from 'lucide-react';
 import { VIEWS } from '../../utils/constants';
+import SettingsModal from '../Common/SettingsModal';
 
 const Sidebar = ({
   currentView,
@@ -22,8 +24,25 @@ const Sidebar = ({
   onExport,
   onImportClick
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   return (
-    <aside className="w-64 sidebar bg-slate-950 border-r border-slate-800 flex flex-col">
+    <>
+      {/* Mobile burger */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 rounded-lg shadow-lg"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label="Open menu"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M3 6h18M3 18h18"></path></svg>
+      </button>
+
+      {/* Overlay for mobile when open */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsOpen(false)} />
+      )}
+
+      <aside className={`w-64 sidebar bg-slate-950 border-r border-slate-800 flex flex-col transform transition-transform z-50 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:w-64`}>
       <div className="sidebar-brand u-card">
         <h1 className="text-2xl font-extrabold tracking-tight brutal-title">
           BatesTading<span className="font-light text-white">Vision</span>
@@ -125,8 +144,16 @@ const Sidebar = ({
         >
           <Upload size={16} /> Import Data
         </button>
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="w-full flex items-center justify-center gap-2 u-card text-slate-300 text-sm py-2 rounded-lg transition-colors"
+        >
+          <Settings size={16} /> Paramètres
+        </button>
       </div>
-    </aside>
+      </aside>
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+    </>
   );
 };
 

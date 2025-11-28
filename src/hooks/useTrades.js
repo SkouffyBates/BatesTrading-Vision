@@ -44,7 +44,8 @@ export const useTrades = (initialTrades = []) => {
         setTrades(normalized);
         return;
       } catch (error) {
-        console.error('Error loading trades from DB:', error);
+          const toast = window.__addToast;
+          toast ? toast('Erreur en chargeant les trades depuis la BDD: ' + (error.message || ''), 'error') : console.error('Error loading trades from DB:', error);
       }
     }
 
@@ -72,7 +73,8 @@ export const useTrades = (initialTrades = []) => {
         await window.db.createTrade(trade);
         await loadTradesFromSource();
       } catch (e) {
-        console.error('Error creating trade:', e);
+        const toast = window.__addToast;
+        toast ? toast('Erreur lors de la création du trade: ' + (e.message || ''), 'error') : console.error('Error creating trade:', e);
       }
     } else {
       const newTrades = [...trades, trade];
@@ -87,7 +89,8 @@ export const useTrades = (initialTrades = []) => {
         await window.db.updateTrade(updatedTrade);
         await loadTradesFromSource();
       } catch (e) {
-        console.error('Error updating trade:', e);
+        const toast = window.__addToast;
+        toast ? toast('Erreur lors de la mise à jour du trade: ' + (e.message || ''), 'error') : console.error('Error updating trade:', e);
       }
     } else {
       const newTrades = trades.map((t) => (t.id === updatedTrade.id ? updatedTrade : t));
@@ -103,7 +106,8 @@ export const useTrades = (initialTrades = []) => {
         await window.db.deleteTrade(id);
         await loadTradesFromSource();
       } catch (e) {
-        console.error('Error deleting trade:', e);
+        const toast = window.__addToast;
+        toast ? toast('Erreur lors de la suppression du trade: ' + (e.message || ''), 'error') : console.error('Error deleting trade:', e);
       }
     } else {
       const newTrades = trades.filter((t) => t.id !== id);

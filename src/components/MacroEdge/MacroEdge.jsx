@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Globe, Trash2, Plus, Zap, ArrowRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Globe, Trash2, Plus, Zap, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import RiskGauge from '../Common/RiskGauge';
 
@@ -18,6 +18,9 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
     impact: 'High',
   });
 
+  const [currentPage, setCurrentPage] = useState(0);
+  const ITEMS_PER_PAGE = 10;
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newEvent.event.trim()) {
@@ -32,14 +35,92 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
     }
   };
 
-  // Historical score data (simplified)
+  // Pagination logic for events table
+  const sortedEvents = useMemo(() => {
+    return (Array.isArray(events) ? events : [])
+      .slice()
+      .reverse(); // Most recent first
+  }, [events]);
+
+  const totalPages = Math.ceil(sortedEvents.length / ITEMS_PER_PAGE);
+  const paginatedEvents = useMemo(() => {
+    const start = currentPage * ITEMS_PER_PAGE;
+    return sortedEvents.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedEvents, currentPage]);
+
+  const handlePrevPage = () => {
+    setCurrentPage(p => Math.max(0, p - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(p => (p + 1 < totalPages ? p + 1 : p));
+  };
+
+  // Historical score data - calculated from event surprises and impact
   const historyData = events
     .slice()
     .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map((e, i) => ({
-      name: e.date.substring(5),
-      score: 50 + (i % 2 === 0 ? 5 : -5), // Placeholder
-    }));
+    .map((e, i, sortedEvents) => {
+      // Calculate surprise: actual - forecast
+      const surprise = parseFloat(e.actual) - parseFloat(e.forecast);
+      
+      // Impact weight mapping (high = 1.0, medium = 0.5, low = 0.25)
+      const impactWeight = {
+        'High': 1.0,
+        'Medium': 0.5,
+        'Low': 0.25,
+      }[e.impact] || 0.5;
+      
+      // Determine sentiment based on category and surprise direction
+      let sentiment = 0;
+      if (e.category === 'Inflation' || e.category === 'Central Bank') {
+        // For inflation/rate data: positive surprise = bearish (lower score)
+        sentiment = surprise > 0 ? -1 : 1;
+      } else if (e.category === 'Employment' && e.event.includes('Unemployment')) {
+        // For unemployment: positive surprise = bearish (higher unemployment)
+        sentiment = surprise > 0 ? -1 : 1;
+      } else {
+        // For growth/confidence: positive surprise = bullish (higher score)
+        sentiment = surprise > 0 ? 1 : -1;
+      }
+      
+      // Calculate weighted impact (normalized to -1 to +1 range)
+      const normalizedSurprise = Math.min(Math.max(surprise / 10, -1), 1); // Cap at ±1
+      const weightedImpact = normalizedSurprise * impactWeight * sentiment;
+      
+      // Running average of all weighted impacts up to this point
+      let cumulativeScore = 50; // Base neutral score
+      for (let j = 0; j <= i; j++) {
+        const event = sortedEvents[j];
+        const s = parseFloat(event.actual) - parseFloat(event.forecast);
+        const iw = {
+          'High': 1.0,
+          'Medium': 0.5,
+          'Low': 0.25,
+        }[event.impact] || 0.5;
+        
+        let sent = 0;
+        if (event.category === 'Inflation' || event.category === 'Central Bank') {
+          sent = s > 0 ? -1 : 1;
+        } else if (event.category === 'Employment' && event.event.includes('Unemployment')) {
+          sent = s > 0 ? -1 : 1;
+        } else {
+          sent = s > 0 ? 1 : -1;
+        }
+        
+        const ns = Math.min(Math.max(s / 10, -1), 1);
+        const contrib = ns * iw * sent * 25; // Scale contribution (25 = 50% of base)
+        cumulativeScore += contrib / (i + 1);
+      }
+      
+      // Clamp between 0 and 100
+      const finalScore = Math.min(Math.max(cumulativeScore, 0), 100);
+      
+      return {
+        name: e.date.substring(5),
+        score: Math.round(finalScore),
+      };
+    });
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -48,7 +129,7 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <Globe className="text-cyan-400" /> MacroEdge Pro
           <span className="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded border border-cyan-500/40">
-            Sentiment Analyzer
+            {events && events.length > 0 ? `${events.length} événements` : 'Aucun événement'}
           </span>
         </h2>
       </div>
@@ -98,7 +179,7 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
         {/* Events Table */}
         <div className="lg:col-span-2 u-card p-6 rounded-xl flex flex-col">
           <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">
-            Derniers Indicateurs
+            Derniers Indicateurs ({sortedEvents.length} total)
           </h3>
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-left text-slate-300 text-sm">
@@ -114,10 +195,7 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
-                {events
-                  .slice()
-                  .reverse()
-                  .map((e) => {
+                {paginatedEvents.map((e) => {
                     const surprise = parseFloat(e.actual) - parseFloat(e.forecast);
                     const isPositiveSurprise = surprise > 0;
                     let colorClass = 'text-emerald-400';
@@ -178,6 +256,32 @@ const MacroEdge = ({ events, onAddEvent, onDeleteEvent, riskScore }) => {
               </tbody>
             </table>
           </div>
+          {/* Pagination controls */}
+          {sortedEvents.length > ITEMS_PER_PAGE && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
+              <span className="text-xs text-slate-400">
+                Page {currentPage + 1} / {totalPages} ({sortedEvents.length} événements)
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 0}
+                  className="p-1 text-slate-400 hover:text-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Page précédente"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage + 1 >= totalPages}
+                  className="p-1 text-slate-400 hover:text-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Page suivante"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

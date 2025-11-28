@@ -5,15 +5,33 @@ import { useState, useEffect } from 'react';
  * Handles daily routine, rules, and goals
  */
 export const useTradingPlan = (initialPlan = {}) => {
+  const isElectron = typeof window !== 'undefined' && window.db;
+
   const [plan, setPlan] = useState(() => {
+    if (isElectron) return initialPlan;
     const saved = localStorage.getItem('swing_plan');
     return saved ? JSON.parse(saved) : initialPlan;
   });
 
-  // Persist to localStorage
+  // Persist to localStorage when not using DB
   useEffect(() => {
+    if (isElectron) return;
     localStorage.setItem('swing_plan', JSON.stringify(plan));
   }, [plan]);
+
+  // Load from DB on mount when running in Electron
+  useEffect(() => {
+    if (!isElectron) return;
+    (async () => {
+      try {
+        const dbPlan = await window.db.getTradingPlan();
+        if (dbPlan) setPlan(dbPlan);
+      } catch (err) {
+        const toast = window.__addToast;
+        toast ? toast('Erreur en chargeant le trading plan: ' + (err.message || ''), 'error') : console.error('Error loading trading plan:', err);
+      }
+    })();
+  }, []);
 
   const toggleRoutineItem = (id) => {
     const newRoutine = plan.dailyRoutine.map((item) =>

@@ -69,8 +69,8 @@ export const INITIAL_TRADES = [
   { 
     id: 1, 
     accountId: 'acc_1',
-    openDate: '2023-10-01', 
-    closeDate: '2023-10-02', 
+    openDate: '2025-01-15', 
+    closeDate: '2025-01-16', 
     pair: 'EURUSD', 
     direction: 'Long', 
     positionSize: '1.5 Lots', 
@@ -87,8 +87,8 @@ export const INITIAL_TRADES = [
 ];
 
 export const INITIAL_MACRO_EVENTS = [
-  { id: 1, date: '2023-10-01', event: 'ISM Manufacturing PMI', category: 'Growth', actual: 49.0, forecast: 47.8, previous: 47.6, impact: 'High' },
-  { id: 2, date: '2023-10-04', event: 'Non-Farm Employment Change (NFP)', category: 'Employment', actual: 336, forecast: 170, previous: 187, impact: 'High' },
-  { id: 3, date: '2023-10-12', event: 'CPI m/m', category: 'Inflation', actual: 0.4, forecast: 0.3, previous: 0.6, impact: 'High' },
-  { id: 4, date: '2023-11-01', event: 'Federal Funds Rate', category: 'Central Bank', actual: 5.50, forecast: 5.50, previous: 5.50, impact: 'High' },
+  { id: 1, date: '2025-01-10', event: 'ISM Manufacturing PMI', category: 'Growth', actual: 52.3, forecast: 50.5, previous: 49.0, impact: 'High' },
+  { id: 2, date: '2025-01-15', event: 'Non-Farm Employment Change (NFP)', category: 'Employment', actual: 245000, forecast: 200000, previous: 227000, impact: 'High' },
+  { id: 3, date: '2025-01-22', event: 'CPI m/m', category: 'Inflation', actual: 0.3, forecast: 0.2, previous: 0.4, impact: 'High' },
+  { id: 4, date: '2025-01-29', event: 'Federal Funds Rate', category: 'Central Bank', actual: 4.25, forecast: 4.25, previous: 4.50, impact: 'High' },
 ];

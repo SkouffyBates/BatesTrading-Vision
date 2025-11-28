@@ -28,10 +28,16 @@
     "files": [
       "dist/**/*",
       "electron/**/*"
-    ]
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "SkouffyBates",
+      "repo": "BatesTrading-Vision"
+    }
   },
   "dependencies": {
     "better-sqlite3": "^12.4.6",
+    "electron-updater": "^6.6.2",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
