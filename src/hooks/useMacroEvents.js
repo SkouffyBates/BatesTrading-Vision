@@ -41,7 +41,12 @@ export const useMacroEvents = (initialEvents = []) => {
   const addEvent = async (event) => {
     if (isElectron) {
       try {
-        await window.db.createMacroEvent(event);
+        // ✅ CORRECTION: Générer un ID si absent
+        const eventWithId = {
+          id: event.id || Date.now(),
+          ...event
+        };
+        await window.db.createMacroEvent(eventWithId);
         await loadEvents();
       } catch (err) {
         const toast = window.__addToast;
