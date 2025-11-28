@@ -22,6 +22,11 @@
       "target": "nsis",
       "icon": "build/SwingTrade-Pro.ico"
     },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "build/SwingTrade-Pro.icns",
+      "category": "public.app-category.finance"
+    },
     "directories": {
       "output": "release"
     },
