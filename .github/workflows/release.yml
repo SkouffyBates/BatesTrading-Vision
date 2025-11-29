@@ -19,14 +19,18 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build the app
-        run: npm run dist
+        run: npm run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Upload build to release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            dist/**/*.exe
-            release/**/*.exe
+          files: release/**/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
