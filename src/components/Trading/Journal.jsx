@@ -112,10 +112,13 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
     let pnlAmount = parseFloat(formData.pnl) || 0;
     if (pnlMode === 'percent') {
       const percentValue = parseFloat(formData.pnlPercent) || 0;
-      pnlAmount = (riskAmount * percentValue) / 100;
+      const accountBalance = accounts.find(a => a.id === formData.accountId)?.balance || 0;
+      // ✅ CORRECTION: Calculer le P&L en % du compte, pas du risque
+      pnlAmount = (accountBalance * percentValue) / 100;
     }
     
-    const rMultiple = (pnlAmount / riskAmount).toFixed(2);
+    // ✅ R-multiple = P&L / Risque (inchangé, c'est correct)
+    const rMultiple = riskAmount > 0 ? (pnlAmount / riskAmount).toFixed(2) : 0;
     const tradeData = {
       ...formData,
       risk: riskAmount,
@@ -227,9 +230,14 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       {(() => {
                         const mode = globalPlMode || 'usd';
                         const pnlNum = parseFloat(trade.pnl) || 0;
-                        const riskNum = parseFloat(trade.risk) || 0;
-                        const display = mode === 'usd' ? `${pnlNum > 0 ? '+' : ''}${pnlNum}` : `${(riskNum ? ((pnlNum / riskNum) * 100) : 0) >= 0 ? '+' : ''}${((riskNum ? ((pnlNum / riskNum) * 100) : 0)).toFixed(2)}%`;
-                        const positive = mode === 'usd' ? pnlNum > 0 : (riskNum ? ((pnlNum / riskNum) * 100) : 0) > 0;
+                        const accountBalance = accounts.find(a => a.id === trade.accountId)?.balance || 0;
+                        // ✅ CORRECTION: Afficher le rendement du compte, pas le R-multiple
+                        let pctValue = 0;
+                        if (accountBalance > 0) {
+                          pctValue = (pnlNum / accountBalance) * 100;
+                        }
+                        const display = mode === 'usd' ? `${pnlNum > 0 ? '+' : ''}${pnlNum}` : `${pctValue >= 0 ? '+' : ''}${pctValue.toFixed(2)}%`;
+                        const positive = mode === 'usd' ? pnlNum > 0 : pctValue > 0;
                         return (
                           <td className={`px-4 py-4 text-right font-mono font-bold ${positive ? 'text-emerald-400' : 'text-red-400'}`}>{display}</td>
                         );
@@ -265,9 +273,14 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                 {(() => {
                   const mode = globalPlMode || 'usd';
                   const pnlNum = parseFloat(trade.pnl) || 0;
-                  const riskNum = parseFloat(trade.risk) || 0;
+                  const accountBalance = accounts.find(a => a.id === trade.accountId)?.balance || 0;
+                  // ✅ CORRECTION: Afficher le rendement du compte, pas le R-multiple
                   const positive = pnlNum > 0;
-                  const display = mode === 'usd' ? `${pnlNum > 0 ? '+' : ''}${pnlNum}$` : `${(riskNum ? ((pnlNum / riskNum) * 100) : 0) >= 0 ? '+' : ''}${((riskNum ? ((pnlNum / riskNum) * 100) : 0)).toFixed(2)}%`;
+                  let pctValue = 0;
+                  if (accountBalance > 0) {
+                    pctValue = (pnlNum / accountBalance) * 100;
+                  }
+                  const display = mode === 'usd' ? `${pnlNum > 0 ? '+' : ''}${pnlNum}$` : `${pctValue >= 0 ? '+' : ''}${pctValue.toFixed(2)}%`;
                   return (
                     <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${positive ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>{display}</div>
                   );
@@ -495,9 +508,9 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                       {pnlMode === 'usd' ? '$ → %' : '% → $'}
                     </button>
                   </div>
-                  {pnlMode === 'percent' && parseFloat(formData.risk) > 0 && (
+                  {pnlMode === 'percent' && parseFloat(formData.pnlPercent) > 0 && (
                     <p className="text-xs text-cyan-400/70 mt-1">
-                      ≈ ${((parseFloat(formData.risk) * parseFloat(formData.pnlPercent)) / 100).toFixed(2)}
+                      ≈ ${((parseFloat(accounts.find(a => a.id === formData.accountId)?.balance || 0) * parseFloat(formData.pnlPercent)) / 100).toFixed(2)}
                     </p>
                   )}
                 </div>
