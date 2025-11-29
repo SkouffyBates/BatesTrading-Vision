@@ -27,7 +27,7 @@ jobs:
         run: npm ci
 
       - name: Build the app
-        run: npm run electron:build:local
+        run: npm run electron:build
         # Note: On utilise electron:build:local pour éviter l'erreur GH_TOKEN dans le build
         # La publication sera gérée par softprops/action-gh-release ensuite
 
