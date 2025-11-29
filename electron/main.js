@@ -57,7 +57,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: "BatesTading Vision",
+    title: "BatesTrading Vision",
     icon: path.join(__dirname, '../public/icon.ico'), // Optionnel si vous avez une icône
     backgroundColor: '#0f172a', // Couleur de fond (Slate-900) pour éviter le flash blanc
     webPreferences: {
