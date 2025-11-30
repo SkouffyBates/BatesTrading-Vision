@@ -154,7 +154,13 @@ const Dashboard = ({ trades, accounts, currentAccountId, plan = null }) => {
           <Card title="P&L (Période)" value={fmt(stats.totalPnL)} icon={TrendingUp} trend={stats.totalPnL >= 0 ? 'up' : 'down'} />
         </div>
         <div className="stat-card glow-active">
-          <Card title="Win Rate" value={`${stats.winRate}%`} subtext={`${stats.wins}W - ${stats.losses}L`} icon={CheckCircle} trend={parseFloat(stats.winRate) > 50 ? 'up' : 'down'} />
+          <Card 
+            title="Win Rate" 
+            value={`${stats.winRate}%`} 
+            subtext={`${stats.wins}W - ${stats.losses}L - ${stats.breakEvens || 0}BE`} 
+            icon={CheckCircle} 
+            trend={parseFloat(stats.winRate) > 50 ? 'up' : 'down'} 
+          />
         </div>
         <div className="stat-card glow-active">
           <Card title="Profit Factor" value={stats.profitFactor} subtext="Cible > 1.5" icon={BarChart2} trend="neutral" />

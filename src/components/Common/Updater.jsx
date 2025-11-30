@@ -9,6 +9,7 @@ const Updater = () => {
   const [downloaded, setDownloaded] = useState(false);
   const [error, setError] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [hasChecked, setHasChecked] = useState(false); // ✅ NOUVEAU: éviter les checks multiples
 
   useEffect(() => {
     if (!window.updater) {
@@ -18,13 +19,15 @@ const Updater = () => {
 
     const unsubAvailable = window.updater.on('update:available', (data) => {
       console.log('✅ Update available:', data);
+      setChecking(false); // ✅ CRITIQUE: Arrêter IMMÉDIATEMENT le checking
       setAvailable(true);
       setInfo(data);
       setError(null);
+      setHasChecked(true); // ✅ Marquer comme vérifié
       
-      // Toast notification
+      // Toast notification (seulement si pas déjà affiché)
       const toast = window.__addToast;
-      if (toast) {
+      if (toast && !available) {
         toast(`Nouvelle version ${data.version} disponible !`, 'info', 8000);
       }
     });
@@ -32,6 +35,8 @@ const Updater = () => {
     const unsubNot = window.updater.on('update:not-available', (data) => {
       console.log('ℹ️ No update available');
       setChecking(false);
+      setAvailable(false);
+      setHasChecked(true);
     });
 
     const unsubProgress = window.updater.on('update:progress', (p) => {
@@ -55,6 +60,8 @@ const Updater = () => {
       setError(err.message || 'Erreur lors de la mise à jour');
       setProgress(null);
       setChecking(false);
+      setAvailable(false);
+      setHasChecked(true);
       
       const toast = window.__addToast;
       if (toast) {
@@ -62,14 +69,19 @@ const Updater = () => {
       }
     });
 
-    // Auto-check au démarrage (après 5s)
+    // ✅ CORRECTION: Ne vérifier qu'UNE SEULE FOIS au démarrage
     const timer = setTimeout(() => {
-      console.log('🔍 Auto-checking for updates...');
-      setChecking(true);
-      window.updater.checkForUpdates().catch(e => {
-        console.log('Check failed (normal in dev):', e);
-        setChecking(false);
-      });
+      if (!hasChecked) {
+        console.log('🔍 Auto-checking for updates...');
+        setChecking(true);
+        window.updater.checkForUpdates().then((result) => {
+          console.log('✅ Check initiated:', result);
+        }).catch(e => {
+          console.log('Check failed (normal in dev):', e);
+          setChecking(false);
+          setHasChecked(true);
+        });
+      }
     }, 5000);
 
     return () => {
@@ -80,7 +92,7 @@ const Updater = () => {
       try { unsubDownloaded(); } catch (e) {}
       try { unsubError(); } catch (e) {}
     };
-  }, []);
+  }, [hasChecked, available]);
 
   const handleDownload = async () => {
     try {
@@ -100,14 +112,19 @@ const Updater = () => {
   };
 
   const handleCheckManually = async () => {
+    if (checking) return; // ✅ PROTECTION: Ne pas relancer si déjà en cours
+    
     setChecking(true);
     setError(null);
+    setAvailable(false);
     try {
-      await window.updater.checkForUpdates();
+      const result = await window.updater.checkForUpdates();
+      console.log('✅ Manual check result:', result);
     } catch (e) {
       setError('Vérification échouée: ' + (e.message || ''));
+      setChecking(false);
+      setHasChecked(true);
     }
-    setTimeout(() => setChecking(false), 3000);
   };
 
   // Ne rien afficher si pas d'update disponible

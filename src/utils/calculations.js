@@ -16,18 +16,50 @@ export const filterTradesByTime = (trades, timeFilter) => {
   });
 };
 
+// ✅ Helper: Déterminer si un trade est BE (Break Even) - <0.3% du risque
+const isBE = (pnl, risk) => {
+  if (!risk || risk <= 0) return false;
+  const pct = Math.abs(pnl / risk) * 100;
+  return pct < 0.3; // <0.3% du risque = BE
+};
+
 export const calculateStats = (trades, accounts, currentAccountId) => {
   // Guard against null/undefined inputs
   const safeTrades = Array.isArray(trades) ? trades : [];
   const safeAccounts = Array.isArray(accounts) ? accounts : [];
   
-  const totalTrades = safeTrades.length;
-  const wins = safeTrades.filter(t => t.pnl > 0).length;
-  const losses = safeTrades.filter(t => t.pnl <= 0).length;
+  // ✅ CORRECTION: Trier les trades par date de fermeture (closeDate) pour equity curve
+  const sortedTrades = [...safeTrades].sort((a, b) => {
+    const dateA = new Date(a.closeDate || a.openDate);
+    const dateB = new Date(b.closeDate || b.openDate);
+    return dateA - dateB; // Ordre chronologique
+  });
+  
+  const totalTrades = sortedTrades.length;
+  
+  // ✅ CORRECTION: Classifier Win/Loss/BE correctement
+  const wins = sortedTrades.filter(t => {
+    const pnl = parseFloat(t.pnl || 0);
+    const risk = parseFloat(t.risk || 0);
+    return pnl > 0 && !isBE(pnl, risk);
+  }).length;
+  
+  const losses = sortedTrades.filter(t => {
+    const pnl = parseFloat(t.pnl || 0);
+    const risk = parseFloat(t.risk || 0);
+    return pnl < 0 && !isBE(pnl, risk);
+  }).length;
+  
+  const breakEvens = sortedTrades.filter(t => {
+    const pnl = parseFloat(t.pnl || 0);
+    const risk = parseFloat(t.risk || 0);
+    return isBE(pnl, risk);
+  }).length;
+  
   const winRate = totalTrades ? ((wins / totalTrades) * 100).toFixed(1) : 0;
-  const totalPnL = safeTrades.reduce((acc, curr) => acc + parseFloat(curr.pnl || 0), 0);
-  const grossProfit = safeTrades.filter(t => t.pnl > 0).reduce((acc, t) => acc + parseFloat(t.pnl || 0), 0);
-  const grossLoss = Math.abs(safeTrades.filter(t => t.pnl < 0).reduce((acc, t) => acc + parseFloat(t.pnl || 0), 0));
+  const totalPnL = sortedTrades.reduce((acc, curr) => acc + parseFloat(curr.pnl || 0), 0);
+  const grossProfit = sortedTrades.filter(t => t.pnl > 0).reduce((acc, t) => acc + parseFloat(t.pnl || 0), 0);
+  const grossLoss = Math.abs(sortedTrades.filter(t => t.pnl < 0).reduce((acc, t) => acc + parseFloat(t.pnl || 0), 0));
   const profitFactor = grossLoss === 0 ? (grossProfit > 0 ? grossProfit : 0) : (grossProfit / grossLoss).toFixed(2);
 
   let startBalance = 0;
@@ -38,10 +70,11 @@ export const calculateStats = (trades, accounts, currentAccountId) => {
     startBalance = safeAccounts.reduce((acc, curr) => acc + parseFloat(curr.balance || 0), 0);
   }
 
+  // ✅ CORRECTION: Equity curve basée sur les trades TRIÉS par date de fermeture
   let currentEquity = startBalance;
-  const equityCurve = safeTrades.map((t, index) => {
+  const equityCurve = sortedTrades.map((t, index) => {
     currentEquity += parseFloat(t.pnl || 0);
-    return { name: `T${index + 1}`, equity: currentEquity };
+    return { name: `T${index + 1}`, equity: currentEquity, date: t.closeDate || t.openDate };
   });
 
   if (equityCurve.length === 0) {
@@ -50,7 +83,7 @@ export const calculateStats = (trades, accounts, currentAccountId) => {
     equityCurve.unshift({ name: 'Start', equity: startBalance });
   }
 
-  const allTimePnL = safeTrades.reduce((acc, curr) => acc + parseFloat(curr.pnl || 0), 0);
+  const allTimePnL = sortedTrades.reduce((acc, curr) => acc + parseFloat(curr.pnl || 0), 0);
   const trueCurrentBalance = (currentAccountId === 'all'
     ? safeAccounts.reduce((acc, curr) => acc + parseFloat(curr.balance || 0), 0)
     : (safeAccounts.find(a => a.id === currentAccountId)?.balance || 0)) + allTimePnL;
@@ -63,6 +96,7 @@ export const calculateStats = (trades, accounts, currentAccountId) => {
     equityCurve,
     wins,
     losses,
+    breakEvens, // ✅ Nouveau: nombre de BE
     trueCurrentBalance: isNaN(trueCurrentBalance) ? startBalance : trueCurrentBalance,
     grossProfit: isNaN(grossProfit) ? 0 : grossProfit,
     grossLoss: isNaN(grossLoss) ? 0 : grossLoss

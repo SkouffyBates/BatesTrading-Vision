@@ -226,7 +226,18 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                         <span className={`px-2 py-1 rounded text-xs ${trade.direction === 'Long' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-orange-500/20 text-orange-400'}`}>{trade.direction}</span>
                       </td>
                       <td className="px-4 py-4 text-sm text-slate-400">{trade.positionSize || '-'}</td>
-                      <td className="px-4 py-4 text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${trade.pnl > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{trade.pnl > 0 ? 'W' : 'L'}</span></td>
+                      <td className="px-4 py-4 text-center">
+                        {(() => {
+                          const pnl = parseFloat(trade.pnl || 0);
+                          const risk = parseFloat(trade.risk || 0);
+                          const isBE = risk > 0 && Math.abs(pnl / risk) * 100 < 0.3;
+                          
+                          if (isBE) {
+                            return <span className="px-2 py-1 rounded text-xs font-bold text-slate-400 bg-slate-700/30">BE</span>;
+                          }
+                          return <span className={`px-2 py-1 rounded text-xs font-bold ${pnl > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{pnl > 0 ? 'W' : 'L'}</span>;
+                        })()}
+                      </td>                      
                       {(() => {
                         const mode = globalPlMode || 'usd';
                         const pnlNum = parseFloat(trade.pnl) || 0;
