@@ -201,6 +201,11 @@ export const deleteAccount = (id) => {
   return stmt.run(id);
 };
 
+export const updateAccountName = (id, name) => {
+  const stmt = db.prepare('UPDATE accounts SET name = ? WHERE id = ?');
+  return stmt.run(name, id);
+};
+
 // ==================== TRADES ====================
 
 export const getAllTrades = () => {

@@ -21,6 +21,11 @@
   "build": {
     "appId": "com.swingtradepro.app",
     "productName": "BatesTrading Vision",
+    "publish": {
+      "provider": "github",
+      "owner": "SkouffyBates",
+      "repo": "BatesTrading-Vision"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/SwingTrade-Pro.ico"

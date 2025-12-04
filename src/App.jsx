@@ -57,6 +57,7 @@ const App = () => {
     setCurrentAccountId,
     addAccount,
     deleteAccount,
+    updateAccountName,
     loading: accountsLoading,
   } = useAccounts(INITIAL_ACCOUNTS);
 
@@ -291,6 +292,7 @@ const handleImport = (event) => {
         accounts={accounts}
         onAddAccount={addAccount}
         onDeleteAccount={deleteAccount}
+        onUpdateAccountName={updateAccountName}
       />
 
       <input

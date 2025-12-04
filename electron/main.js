@@ -7,6 +7,7 @@ import {
   getAllAccounts,
   createAccount,
   deleteAccount,
+  updateAccountName,
   getAllTrades,
   createTrade,
   updateTrade,
@@ -120,6 +121,7 @@ function setupIpcHandlers() {
   ipcMain.handle('db:getAccounts', () => getAllAccounts());
   ipcMain.handle('db:createAccount', (event, account) => createAccount(account));
   ipcMain.handle('db:deleteAccount', (event, id) => deleteAccount(id));
+  ipcMain.handle('db:updateAccountName', (event, id, name) => updateAccountName(id, name));
 
   // ==================== TRADES ====================
   ipcMain.handle('db:getTrades', () => {

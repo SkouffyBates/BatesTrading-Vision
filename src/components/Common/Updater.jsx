@@ -92,7 +92,7 @@ const Updater = () => {
       try { unsubDownloaded(); } catch (e) {}
       try { unsubError(); } catch (e) {}
     };
-  }, [hasChecked, available]);
+  }, [hasChecked]);
 
   const handleDownload = async () => {
     try {

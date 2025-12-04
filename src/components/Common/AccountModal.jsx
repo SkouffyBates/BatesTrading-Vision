@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Trash2, Plus, Briefcase } from 'lucide-react';
+import { Trash2, Plus, Briefcase, Edit, Save, X } from 'lucide-react';
 
 /**
  * Account Management Modal
  * Create and manage trading accounts
  */
-const AccountModal = ({ isOpen, onClose, accounts, onAddAccount, onDeleteAccount }) => {
+const AccountModal = ({ isOpen, onClose, accounts, onAddAccount, onDeleteAccount, onUpdateAccountName }) => {
   const [newAccountData, setNewAccountData] = useState({ name: '', balance: '' });
+  const [editingAccountId, setEditingAccountId] = useState(null);
+  const [editingName, setEditingName] = useState('');
 
   if (!isOpen) return null;
 
@@ -27,6 +29,24 @@ const AccountModal = ({ isOpen, onClose, accounts, onAddAccount, onDeleteAccount
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce compte ?')) {
       onDeleteAccount(id);
     }
+  };
+
+  const handleEditClick = (account) => {
+    setEditingAccountId(account.id);
+    setEditingName(account.name);
+  };
+
+  const handleSaveClick = (accountId) => {
+    if (editingName.trim()) {
+      onUpdateAccountName(accountId, editingName.trim());
+      setEditingAccountId(null);
+      setEditingName('');
+    }
+  };
+
+  const handleCancelClick = () => {
+    setEditingAccountId(null);
+    setEditingName('');
   };
 
   return (
@@ -60,18 +80,44 @@ const AccountModal = ({ isOpen, onClose, accounts, onAddAccount, onDeleteAccount
                   key={acc.id}
                   className="flex justify-between items-center u-card p-3 rounded"
                 >
-                  <div>
-                    <p className="font-bold text-white text-sm">{acc.name}</p>
-                    <p className="text-xs text-slate-400">
-                      Départ: {acc.balance.toLocaleString()} {acc.currency}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(acc.id)}
-                    className="text-slate-500 hover:text-red-400 p-1 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {editingAccountId === acc.id ? (
+                    // ----- Edit Mode -----
+                    <div className="flex-grow flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="w-full bg-white/10 border border-cyan-500 rounded px-2 py-1 text-white text-sm outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        autoFocus
+                      />
+                      <button onClick={() => handleSaveClick(acc.id)} className="text-green-400 hover:text-green-300 p-1"><Save size={16} /></button>
+                      <button onClick={handleCancelClick} className="text-red-400 hover:text-red-300 p-1"><X size={16} /></button>
+                    </div>
+                  ) : (
+                    // ----- View Mode -----
+                    <>
+                      <div>
+                        <p className="font-bold text-white text-sm">{acc.name}</p>
+                        <p className="text-xs text-slate-400">
+                          Départ: {acc.balance.toLocaleString()} {acc.currency}
+                        </p>
+                      </div>
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => handleEditClick(acc)}
+                          className="text-slate-500 hover:text-cyan-400 p-1 transition-colors"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(acc.id)}
+                          className="text-slate-500 hover:text-red-400 p-1 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))
             )}

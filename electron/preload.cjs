@@ -4,13 +4,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('db', {
   // Accounts
   getAccounts: () => ipcRenderer.invoke('db:getAccounts'),
-  createAccount: (account) => ipcRenderer.invoke('db:createAccount', account),
-  deleteAccount: (id) => ipcRenderer.invoke('db:deleteAccount', id),
-
-  // Trades
-  getTrades: () => ipcRenderer.invoke('db:getTrades'),
-  createTrade: (trade) => ipcRenderer.invoke('db:createTrade', trade),
-  updateTrade: (trade) => ipcRenderer.invoke('db:updateTrade', trade),
+      createAccount: (account) => ipcRenderer.invoke('db:createAccount', account),
+      deleteAccount: (id) => ipcRenderer.invoke('db:deleteAccount', id),
+      updateAccountName: (id, name) => ipcRenderer.invoke('db:updateAccountName', id, name),
+  
+      // Trades
+      getTrades: () => ipcRenderer.invoke('db:getTrades'),
+      createTrade: (trade) => ipcRenderer.invoke('db:createTrade', trade),  updateTrade: (trade) => ipcRenderer.invoke('db:updateTrade', trade),
   deleteTrade: (id) => ipcRenderer.invoke('db:deleteTrade', id),
 
   // Trading Plan

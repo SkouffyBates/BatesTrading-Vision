@@ -76,6 +76,31 @@ export const useAccounts = (initialAccounts = []) => {
     }
   };
 
+  const updateAccountName = async (accountId, newName) => {
+    if (isElectron) {
+      try {
+        await window.db.updateAccountName(accountId, newName);
+        // Mettre à jour l'état local pour un feedback immédiat
+        setAccounts(prevAccounts =>
+          prevAccounts.map(account =>
+            account.id === accountId ? { ...account, name: newName } : account
+          )
+        );
+        console.log('✅ Account name updated');
+      } catch (error) {
+        const toast = window.__addToast;
+        toast ? toast('Erreur lors du renommage du compte: ' + (error.message || ''), 'error') : console.error('Error updating account name:', error);
+      }
+    } else {
+      // Fallback pour le navigateur
+      const newAccounts = accounts.map(account =>
+        account.id === accountId ? { ...account, name: newName } : account
+      );
+      setAccounts(newAccounts);
+      localStorage.setItem('swing_accounts', JSON.stringify(newAccounts));
+    }
+  };
+
   const getCurrentAccount = () => {
     if (currentAccountId === 'all') return null;
     return accounts.find((a) => a.id === currentAccountId);
@@ -91,6 +116,7 @@ export const useAccounts = (initialAccounts = []) => {
     setCurrentAccountId,
     addAccount,
     deleteAccount,
+    updateAccountName,
     getCurrentAccount,
     getTotalBalance,
     loading,
