@@ -16,10 +16,16 @@ let db = null;
  */
 export const loadLegacyData = () => {
   try {
-    const legacyPath = path.join(
-      process.env.APPDATA,
-      'swingtrade-pro'
-    );
+    // Handle different OS paths for legacy data
+    let legacyPath;
+    if (process.platform === 'win32') {
+      legacyPath = path.join(process.env.APPDATA || '', 'swingtrade-pro');
+    } else if (process.platform === 'darwin') {
+      legacyPath = path.join(app.getPath('appData'), 'swingtrade-pro');
+    } else {
+      // Linux
+      legacyPath = path.join(app.getPath('appData'), 'swingtrade-pro');
+    }
 
     if (!fs.existsSync(legacyPath)) {
       console.log('❌ Legacy app folder not found at:', legacyPath);
