@@ -25,9 +25,176 @@ import {
   setSetting,
 } from './database.js';
 
-let autoUpdater = null;
+// --- CONFIGURATION ---
+const APP_TITLE = "BatesTrading Vision";
+const BG_COLOR = '#0f172a'; // Slate-900
 
-// Normalize DB trade row (snake_case) to renderer-friendly camelCase
+let autoUpdater = null;
+let mainWindow = null;
+
+// __dirname replacement for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// --- WINDOW MANAGEMENT ---
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    title: APP_TITLE,
+    icon: path.join(__dirname, '../public/icon.ico'),
+    backgroundColor: BG_COLOR,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+    autoHideMenuBar: true,
+  });
+
+  const isDev = !app.isPackaged;
+  const startUrl = isDev
+    ? 'http://localhost:5173'
+    : `file://${path.join(__dirname, '../dist/index.html')}`;
+
+  mainWindow.loadURL(startUrl);
+}
+
+// --- UPDATER INITIALIZATION ---
+async function initAutoUpdater() {
+  try {
+    const mod = await import('electron-updater');
+    // Robust import handling for ESM/CJS compatibility
+    const au = mod.autoUpdater || (mod.default && mod.default.autoUpdater) || mod.default;
+    
+    if (!au) {
+      console.error('❌ AutoUpdater: Module loaded but updater object not found.');
+      return;
+    }
+
+    autoUpdater = au;
+    
+    // Configuration
+    autoUpdater.autoDownload = false; // On laisse l'utilisateur décider
+    autoUpdater.allowPrerelease = false;
+    
+    // Logger simple pour le debug
+    autoUpdater.logger = console;
+    
+    console.log('✅ AutoUpdater initialized');
+
+    // Event Listeners
+    autoUpdater.on('checking-for-update', () => {
+      console.log('🔍 Checking for updates...');
+      mainWindow?.webContents.send('update:checking');
+    });
+
+    autoUpdater.on('update-available', (info) => {
+      console.log('📦 Update available:', info.version);
+      mainWindow?.webContents.send('update:available', info);
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+      console.log('tjrs à jour:', info);
+      mainWindow?.webContents.send('update:not-available', info);
+    });
+
+    autoUpdater.on('error', (err) => {
+      console.error('❌ Update Error:', err);
+      mainWindow?.webContents.send('update:error', { message: err.message || 'Unknown error' });
+    });
+
+    autoUpdater.on('download-progress', (progressObj) => {
+      // Log moins verbeux pour la progress
+      // console.log(`📥 Download: ${progressObj.percent}%`);
+      mainWindow?.webContents.send('update:progress', progressObj);
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      console.log('✅ Update downloaded');
+      mainWindow?.webContents.send('update:downloaded', info);
+    });
+
+  } catch (e) {
+    console.error('❌ Failed to load electron-updater:', e);
+  }
+}
+
+// --- IPC HANDLERS ---
+function setupIpcHandlers() {
+  // Helper wrapper for error handling
+  const handle = (channel, fn) => {
+    ipcMain.handle(channel, async (event, ...args) => {
+      try {
+        return await fn(event, ...args);
+      } catch (error) {
+        console.error(`❌ IPC Error [${channel}]:`, error);
+        throw error;
+      }
+    });
+  };
+
+  // === DATABASE HANDLERS ===
+  handle('db:getAccounts', () => getAllAccounts());
+  handle('db:createAccount', (_, v) => createAccount(v));
+  handle('db:deleteAccount', (_, id) => deleteAccount(id));
+  handle('db:updateAccountName', (_, id, name) => updateAccountName(id, name));
+
+  // Trades
+  handle('db:getTrades', () => (getAllTrades() || []).map(normalizeTradeRow));
+  handle('db:createTrade', (_, v) => { createTrade(v); return (getAllTrades() || []).map(normalizeTradeRow); });
+  handle('db:updateTrade', (_, v) => { updateTrade(v); return (getAllTrades() || []).map(normalizeTradeRow); });
+  handle('db:deleteTrade', (_, id) => { deleteTrade(id); return (getAllTrades() || []).map(normalizeTradeRow); });
+
+  // Trading Plan & Macro
+  handle('db:getTradingPlan', () => getTradingPlan());
+  handle('db:saveTradingPlan', (_, v) => saveTradingPlan(v));
+  handle('db:getMacroEvents', () => getAllMacroEvents());
+  handle('db:createMacroEvent', (_, v) => createMacroEvent(v));
+  handle('db:deleteMacroEvent', (_, id) => deleteMacroEvent(id));
+
+  // Migration & Settings
+  handle('db:migrateFromLocalStorage', (_, v) => migrateFromLocalStorage(v));
+  handle('db:loadLegacyData', () => loadLegacyData());
+  handle('db:getSetting', (_, k) => getSetting(k));
+  handle('db:setSetting', (_, k, v) => setSetting(k, v));
+
+  // === UPDATER HANDLERS (Async fixed) ===
+  ipcMain.handle('app:checkForUpdates', async () => {
+    if (!autoUpdater) return { ok: false, message: 'Updater not initialized' };
+    try {
+      // AWAIT is critical here to catch immediate errors
+      const result = await autoUpdater.checkForUpdates();
+      return { ok: true, version: result?.updateInfo?.version };
+    } catch (e) {
+      console.error('Check failed:', e);
+      return { ok: false, message: e.message };
+    }
+  });
+
+  ipcMain.handle('app:downloadUpdate', async () => {
+    if (!autoUpdater) return { ok: false, message: 'Updater not initialized' };
+    try {
+      await autoUpdater.downloadUpdate();
+      return { ok: true };
+    } catch (e) {
+      console.error('Download failed:', e);
+      return { ok: false, message: e.message };
+    }
+  });
+
+  ipcMain.handle('app:quitAndInstall', async () => {
+    if (!autoUpdater) return { ok: false, message: 'Updater not initialized' };
+    try {
+      autoUpdater.quitAndInstall();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: e.message };
+    }
+  });
+}
+
+// Helper: Normalize DB rows to CamelCase
 const normalizeTradeRow = (row) => {
   if (!row) return row;
   return {
@@ -50,160 +217,22 @@ const normalizeTradeRow = (row) => {
   };
 };
 
-// Empêcher le garbage collection de la fenêtre
-let mainWindow;
-
-function createWindow() {
-  // Configuration de la fenêtre
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    title: "BatesTrading Vision",
-    icon: path.join(__dirname, '../public/icon.ico'), // Optionnel si vous avez une icône
-    backgroundColor: '#0f172a', // Couleur de fond (Slate-900) pour éviter le flash blanc
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-    autoHideMenuBar: true, // Cache la barre de menu (Fichier, Édition...) pour un look Pro
-  });
-
-  // En DEV : on charge l'URL de Vite. En PROD : on charge le fichier html compilé.
-  const isDev = !app.isPackaged;
-  const startUrl = isDev
-    ? 'http://localhost:5173'
-    : `file://${path.join(__dirname, '../dist/index.html')}`;
-
-  mainWindow.loadURL(startUrl);
-}
-
-// __dirname replacement for ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// ==================== IPC HANDLERS ====================
-
-// Initialize database when app is ready
-app.whenReady().then(() => {
+// --- APP LIFECYCLE ---
+app.whenReady().then(async () => {
   initDatabase();
-  // Clean up old data (before 2024) at startup
   cleanOldMacroEvents('2024-01-01');
   cleanOldTrades('2024-01-01');
+  
+  await initAutoUpdater(); // Wait for updater init
   setupIpcHandlers();
-  // Try to initialize electron-updater if available
-  (async () => {
-    try {
-      const mod = await import('electron-updater');
-      // Accept different export shapes (named export, default, or module itself)
-      const au = mod && (mod.autoUpdater || mod.default || mod);
-      if (!au) throw new Error('no-auto-updater-found');
-      autoUpdater = au;
-      try { autoUpdater.autoDownload = false; } catch (e) { /* ignore if not configurable */ }
-      autoUpdater.on && autoUpdater.on('update-available', (info) => mainWindow && mainWindow.webContents.send('update:available', info));
-      autoUpdater.on && autoUpdater.on('update-not-available', (info) => mainWindow && mainWindow.webContents.send('update:not-available', info));
-      autoUpdater.on && autoUpdater.on('error', (err) => mainWindow && mainWindow.webContents.send('update:error', { message: err == null ? '' : (err.message || String(err)) }));
-      autoUpdater.on && autoUpdater.on('download-progress', (progress) => mainWindow && mainWindow.webContents.send('update:progress', progress));
-      autoUpdater.on && autoUpdater.on('update-downloaded', (info) => mainWindow && mainWindow.webContents.send('update:downloaded', info));
-      console.log('✅ electron-updater loaded');
-    } catch (e) {
-      console.log('electron-updater not available:', e && e.message ? e.message : e);
-    }
-  })();
   createWindow();
 });
 
-/**
- * Setup all IPC handlers for database operations
- */
-function setupIpcHandlers() {
-  // ==================== ACCOUNTS ====================
-  ipcMain.handle('db:getAccounts', () => getAllAccounts());
-  ipcMain.handle('db:createAccount', (event, account) => createAccount(account));
-  ipcMain.handle('db:deleteAccount', (event, id) => deleteAccount(id));
-  ipcMain.handle('db:updateAccountName', (event, id, name) => updateAccountName(id, name));
-
-  // ==================== TRADES ====================
-  ipcMain.handle('db:getTrades', () => {
-    const rows = getAllTrades();
-    return (rows || []).map(normalizeTradeRow);
-  });
-
-  ipcMain.handle('db:createTrade', (event, trade) => {
-    createTrade(trade);
-    const rows = getAllTrades();
-    return (rows || []).map(normalizeTradeRow);
-  });
-
-  ipcMain.handle('db:updateTrade', (event, trade) => {
-    updateTrade(trade);
-    const rows = getAllTrades();
-    return (rows || []).map(normalizeTradeRow);
-  });
-
-  ipcMain.handle('db:deleteTrade', (event, id) => {
-    deleteTrade(id);
-    const rows = getAllTrades();
-    return (rows || []).map(normalizeTradeRow);
-  });
-
-  // ==================== TRADING PLAN ====================
-  ipcMain.handle('db:getTradingPlan', () => getTradingPlan());
-  ipcMain.handle('db:saveTradingPlan', (event, plan) => saveTradingPlan(plan));
-
-  // ==================== MACRO EVENTS ====================
-  ipcMain.handle('db:getMacroEvents', () => getAllMacroEvents());
-  ipcMain.handle('db:createMacroEvent', (event, event_data) => createMacroEvent(event_data));
-  ipcMain.handle('db:deleteMacroEvent', (event, id) => deleteMacroEvent(id));
-
-  // ==================== MIGRATION ====================
-  ipcMain.handle('db:migrateFromLocalStorage', (event, data) => migrateFromLocalStorage(data));
-  ipcMain.handle('db:loadLegacyData', () => loadLegacyData());
-  // Settings handlers
-  ipcMain.handle('db:getSetting', (event, key) => getSetting(key));
-  ipcMain.handle('db:setSetting', (event, key, value) => setSetting(key, value));
-
-  // ==================== UPDATES (guarded) ====================
-  ipcMain.handle('app:checkForUpdates', async () => {
-    if (!autoUpdater) return { ok: false, message: 'updater-not-installed' };
-    try {
-      autoUpdater.checkForUpdates();
-      return { ok: true };
-    } catch (e) {
-      return { ok: false, message: e.message };
-    }
-  });
-
-  ipcMain.handle('app:downloadUpdate', async () => {
-    if (!autoUpdater) return { ok: false, message: 'updater-not-installed' };
-    try {
-      autoUpdater.downloadUpdate();
-      return { ok: true };
-    } catch (e) {
-      return { ok: false, message: e.message };
-    }
-  });
-
-  ipcMain.handle('app:quitAndInstall', async () => {
-    if (!autoUpdater) return { ok: false, message: 'updater-not-installed' };
-    try {
-      autoUpdater.quitAndInstall();
-      return { ok: true };
-    } catch (e) {
-      return { ok: false, message: e.message };
-    }
-  });
-}
-
 app.on('window-all-closed', () => {
   closeDatabase();
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });

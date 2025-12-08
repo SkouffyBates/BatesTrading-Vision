@@ -21,6 +21,7 @@ import useAccounts from './hooks/useAccounts';
 import useTradingPlan from './hooks/useTradingPlan';
 import useMacroEvents from './hooks/useMacroEvents';
 import useNavigation from './hooks/useNavigation';
+import { useDataManagement } from './hooks/useDataManagement';
 
 // Constants
 import {
@@ -75,84 +76,21 @@ const App = () => {
     [trades, currentAccountId]
   );
 
-  const exportData = () => {
-    const dataStr =
-      'data:text/json;charset=utf-8,' +
-      encodeURIComponent(
-        JSON.stringify({ trades, plan, accounts, macroEvents })
-      );
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute('href', dataStr);
-    downloadAnchorNode.setAttribute(
-      'download',
-      `swing_trade_backup_${new Date().toISOString().split('T')[0]}.json`
-    );
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
+  const { exportData, importData } = useDataManagement({
+    trades,
+    accounts,
+    plan,
+    macroEvents,
+    onImportComplete: () => window.location.reload()
+  });
 
-// ✅ CORRECTION: Remplacer la fonction handleImport dans App.jsx
-
-const handleImport = (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    try {
-      const json = JSON.parse(e.target.result);
-      
-      // ✅ CORRECTION: Vérifier qu'il y a au moins une donnée
-      const hasData = json.trades || json.accounts || json.plan || json.macroEvents;
-      if (!hasData) {
-        const toast = window.__addToast;
-        toast ? toast('Aucune donnée valide trouvée dans le fichier.', 'error') : console.error('Aucune donnée valide trouvée dans le fichier.');
-        return;
-      }
-      
-      console.log('📦 Import data:', {
-        trades: json.trades?.length || 0,
-        accounts: json.accounts?.length || 0,
-        macroEvents: json.macroEvents?.length || 0,
-        plan: !!json.plan
-      });
-      
-      if (window.confirm('Attention : Ceci va écraser vos données. Continuer ?')) {
-        try {
-          if (window.db && window.db.migrateFromLocalStorage) {
-            // Migration SQLite
-            await window.db.migrateFromLocalStorage(json);
-            
-            // ✅ CORRECTION: Recharger TOUT après l'import
-            console.log('✅ Migration terminée, rechargement...');
-            window.location.reload(); // Force un reload complet
-          } else {
-            // Fallback localStorage
-            if (json.trades) localStorage.setItem('swing_trades', JSON.stringify(json.trades));
-            if (json.accounts) localStorage.setItem('swing_accounts', JSON.stringify(json.accounts));
-            if (json.plan) localStorage.setItem('swing_plan', JSON.stringify(json.plan));
-            // ✅ CORRECTION: Ne pas oublier les macro events!
-            if (json.macroEvents) localStorage.setItem('swing_macro_events', JSON.stringify(json.macroEvents));
-            
-            window.location.reload();
-          }
-        } catch (err) {
-          console.error('Import error:', err);
-          const toast = window.__addToast;
-          toast ? toast('Échec de l\'import : ' + (err.message || ''), 'error') : console.error('Échec de l\'import : ' + (err.message || err));
-        }
-      }
-    } catch (error) {
-      console.error('Parse error:', error);
-      const toast = window.__addToast;
-      toast ? toast('Erreur de lecture du fichier: ' + (error.message || ''), 'error') : console.error('Erreur de lecture du fichier: ' + error.message);
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      importData(file);
     }
+    event.target.value = null;
   };
-  
-  reader.readAsText(file);
-  event.target.value = null;
-};
 
   // Listen for calendar navigation events to open Journal and scroll to a trade
  React.useEffect(() => {
@@ -298,7 +236,7 @@ const handleImport = (event) => {
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleImport}
+        onChange={handleFileChange}
         className="hidden"
         accept=".json"
       />

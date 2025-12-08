@@ -104,6 +104,9 @@ export const initDatabase = () => {
 
   // Enable foreign keys
   db.pragma('foreign_keys = ON');
+  
+  // Enable WAL mode for better performance
+  db.pragma('journal_mode = WAL');
 
   // Create tables
   createTables();
