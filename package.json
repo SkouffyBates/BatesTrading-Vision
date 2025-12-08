@@ -1,7 +1,7 @@
 {
   "name": "bates-tading-vision",
   "private": true,
-  "version": "1.2.4",
+  "version": "1.2.5",
   "main": "electron/main.js",
   "type": "module",
   "description": "Journal de Trading Professionnel",
@@ -35,6 +35,11 @@
       "target": ["dmg", "zip"],
       "icon": "build/SwingTrade-Pro.icns",
       "category": "public.app-category.finance"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "build/SwingTrade-Pro.ico",
+      "category": "Finance"
     },
     "directories": {
       "output": "release"

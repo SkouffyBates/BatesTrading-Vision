@@ -10,7 +10,11 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -24,9 +28,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # electron-builder gère TOUT : build, génération de latest.yml et upload sur la release GitHub
+      # Build & Publish
+      # Linux nécessite des dépendances graphiques pour le build snap/AppImage parfois,
+      # mais electron-builder gère souvent cela bien sur ubuntu-latest.
       - name: Publish App
         run: npm run electron:publish
         env:
-          # Le token est indispensable pour que electron-builder puisse uploader les assets
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Si vous avez des certificats Apple (optionnel mais recommandé pour Mac):
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          # CSC_LINK: ${{ secrets.CSC_LINK }}
+          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
