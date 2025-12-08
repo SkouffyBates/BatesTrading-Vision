@@ -5,10 +5,8 @@ on:
     tags:
       - 'v*'
 
-# 🔒 CRITIQUE: Permissions nécessaires pour créer des releases
 permissions:
   contents: write
-  packages: write
 
 jobs:
   release:
@@ -21,27 +19,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # Mise à jour vers Node 20 (requis par Vite 7)
+          node-version: '20'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build the app
-        run: npm run electron:build
+      # electron-builder gère TOUT : build, génération de latest.yml et upload sur la release GitHub
+      - name: Publish App
+        run: npm run electron:publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Note: On utilise maintenant electron:build et on passe le token
-        # pour que electron-builder publie le fichier latest.yml
-
-      - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            release/*.exe
-            release/*.exe.blockmap
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          fail_on_unmatched_files: false
-        env:
+          # Le token est indispensable pour que electron-builder puisse uploader les assets
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
