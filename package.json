@@ -1,11 +1,11 @@
 {
   "name": "bates-tading-vision",
   "private": true,
-  "version": "1.2.5",
+  "version": "1.2.6",
   "main": "electron/main.js",
   "type": "module",
   "description": "Journal de Trading Professionnel",
-  "author": "Trader",
+  "author": "Trader <trader@example.com>",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
