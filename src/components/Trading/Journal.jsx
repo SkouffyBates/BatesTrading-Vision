@@ -3,6 +3,7 @@ import Skeleton from '../Common/Skeleton';
 import { Plus, Eye, ImageIcon, Pencil, Trash2, List, Grid } from 'lucide-react';
 import { validateTrade } from '../../utils/validators';
 import { useSettings } from '../../hooks/useSettings';
+import { isBE } from '../../utils/calculations';
 
 /**
  * Trading Journal - Table & Gallery views
@@ -15,6 +16,7 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
   const [pnlMode, setPnlMode] = useState('usd');
   const { settings } = useSettings();
   const globalPlMode = settings?.plDisplay || 'usd';
+  const beThreshold = settings?.beThreshold || 0.3;
 
   const [formData, setFormData] = useState({
     accountId: currentAccountId !== 'all' ? currentAccountId : accounts[0]?.id || '',
@@ -230,12 +232,15 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                         {(() => {
                           const pnl = parseFloat(trade.pnl || 0);
                           const risk = parseFloat(trade.risk || 0);
-                          const isBE = risk > 0 && Math.abs(pnl / risk) * 100 < 0.3;
+                          // Default flat threshold is 10 if not provided
+                          const isBreakEven = isBE(pnl, risk, beThreshold, 10);
+                          const pctRisk = risk > 0 ? (Math.abs(pnl) / risk) * 100 : 0;
                           
-                          if (isBE) {
-                            return <span className="px-2 py-1 rounded text-xs font-bold text-slate-400 bg-slate-700/30">BE</span>;
+                          if (isBreakEven) {
+                            const reason = Math.abs(pnl) <= 10 ? 'PnL < 10$' : `${pctRisk.toFixed(2)}% du Risque`;
+                            return <span className="px-2 py-1 rounded text-xs font-bold text-slate-400 bg-slate-700/30 cursor-help" title={`BE car: ${reason}`}>BE</span>;
                           }
-                          return <span className={`px-2 py-1 rounded text-xs font-bold ${pnl > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{pnl > 0 ? 'W' : 'L'}</span>;
+                          return <span className={`px-2 py-1 rounded text-xs font-bold ${pnl > 0 ? 'text-emerald-400' : 'text-red-400'} cursor-help`} title={`Impact: ${pctRisk.toFixed(2)}% du Risque`}>{pnl > 0 ? 'W' : 'L'}</span>;
                         })()}
                       </td>                      
                       {(() => {
@@ -284,16 +289,25 @@ const Journal = ({ trades, accounts, currentAccountId, onAddTrade, onEditTrade, 
                 {(() => {
                   const mode = globalPlMode || 'usd';
                   const pnlNum = parseFloat(trade.pnl) || 0;
+                  const riskNum = parseFloat(trade.risk) || 0;
                   const accountBalance = accounts.find(a => a.id === trade.accountId)?.balance || 0;
-                  // ✅ CORRECTION: Afficher le rendement du compte, pas le R-multiple
+                  
+                  const isBreakEven = isBE(pnlNum, riskNum, beThreshold, 10);
                   const positive = pnlNum > 0;
+                  
                   let pctValue = 0;
                   if (accountBalance > 0) {
                     pctValue = (pnlNum / accountBalance) * 100;
                   }
                   const display = mode === 'usd' ? `${pnlNum > 0 ? '+' : ''}${pnlNum}$` : `${pctValue >= 0 ? '+' : ''}${pctValue.toFixed(2)}%`;
+                  
+                  let badgeColor = positive ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white';
+                  if (isBreakEven) {
+                    badgeColor = 'bg-slate-600 text-slate-200';
+                  }
+
                   return (
-                    <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${positive ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>{display}</div>
+                    <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${badgeColor}`}>{display}</div>
                   );
                 })()}
                 <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 backdrop-blur rounded text-xs text-white">{trade.pair} • {trade.direction}</div>

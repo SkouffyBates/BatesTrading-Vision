@@ -6,13 +6,16 @@ import Card from '../Common/Card';
 import Skeleton from '../Common/Skeleton';
 import { useSettings } from '../../hooks/useSettings';
 
-const COLORS = ['#10B981', '#EF4444'];
+const COLORS = ['#10B981', '#EF4444', '#94a3b8']; // Green, Red, Slate-400 (BE)
 
 /**
  * Enhanced Dashboard with more visual indicators
  */
 const Dashboard = ({ trades, accounts, currentAccountId, plan = null }) => {
   const [timeFilter, setTimeFilter] = useState('all');
+  const { settings } = useSettings();
+  const plMode = settings?.plDisplay || 'usd';
+  const beThreshold = settings?.beThreshold || 0.3;
 
   const filteredTrades = useMemo(() => {
     const now = new Date();
@@ -28,16 +31,13 @@ const Dashboard = ({ trades, accounts, currentAccountId, plan = null }) => {
     });
   }, [trades, timeFilter]);
 
-  const stats = useMemo(() => calculateStats(filteredTrades, accounts, currentAccountId), [filteredTrades, accounts, currentAccountId]);
+  const stats = useMemo(() => calculateStats(filteredTrades, accounts, currentAccountId, beThreshold), [filteredTrades, accounts, currentAccountId, beThreshold]);
   const drawdown = useMemo(() => calculateDrawdown(stats.equityCurve), [stats.equityCurve]);
   const consecWins = useMemo(() => calculateConsecutiveWins(filteredTrades), [filteredTrades]);
   const consecLosses = useMemo(() => calculateConsecutiveLosses(filteredTrades), [filteredTrades]);
   const avgWin = useMemo(() => calculateAvgWin(filteredTrades), [filteredTrades]);
   const avgLoss = useMemo(() => calculateAvgLoss(filteredTrades), [filteredTrades]);
   const rRatio = useMemo(() => calculateRRatio(filteredTrades), [filteredTrades]);
-
-  const { settings } = useSettings();
-  const plMode = settings?.plDisplay || 'usd';
 
   // Calculate plan metrics from trading data
   const planMetrics = useMemo(() => {
@@ -94,8 +94,25 @@ const Dashboard = ({ trades, accounts, currentAccountId, plan = null }) => {
 
   const pieData = [
     { name: 'Gagnants', value: stats.wins },
-    { name: 'Perdants', value: stats.losses }
+    { name: 'Perdants', value: stats.losses },
+    { name: 'Break Even', value: stats.breakEvens || 0 }
   ];
+
+  // Prepare Equity Curve Data (Normal or Percentage Growth)
+  const equityData = useMemo(() => {
+    if (plMode !== 'percent') return stats.equityCurve;
+
+    // In percent mode, we want to show Growth % from start
+    // Find initial capital (first point)
+    const startEquity = stats.equityCurve.length > 0 ? stats.equityCurve[0].equity : 1;
+    const safeStart = startEquity === 0 ? 1 : startEquity; // Avoid div by zero
+
+    return stats.equityCurve.map(point => ({
+      ...point,
+      // Calculate growth percentage: ((Current - Start) / Start) * 100
+      equity: ((point.equity - startEquity) / safeStart) * 100
+    }));
+  }, [stats.equityCurve, plMode]);
 
   // Monthly P&L breakdown
   const monthlyData = useMemo(() => {
@@ -242,7 +259,7 @@ const Dashboard = ({ trades, accounts, currentAccountId, plan = null }) => {
           <h3 className="section-title mb-6">Courbe de Capital (Equity Curve)</h3>
           <div className="chart-container h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stats.equityCurve}>
+              <LineChart data={equityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                 <XAxis dataKey="name" stroke="rgba(255,255,255,0.4)" hide />
                 <YAxis stroke="rgba(255,255,255,0.4)" domain={['auto', 'auto']} tickFormatter={(v) => plMode === 'percent' ? `${v.toFixed(0)}%` : v} />

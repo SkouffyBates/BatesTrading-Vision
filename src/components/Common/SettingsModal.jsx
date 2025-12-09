@@ -5,18 +5,19 @@ import { useSettings } from '../../hooks/useSettings';
 const SettingsModal = ({ isOpen, onClose }) => {
   const { settings, setSetting } = useSettings();
   const [plMode, setPlMode] = useState(settings?.plDisplay || 'usd');
+  const [beThreshold, setBeThreshold] = useState(settings?.beThreshold || '0.3');
 
   // Sync local state when settings change
   useEffect(() => {
-    if (settings?.plDisplay) {
-      setPlMode(settings.plDisplay);
-    }
-  }, [settings?.plDisplay]);
+    if (settings?.plDisplay) setPlMode(settings.plDisplay);
+    if (settings?.beThreshold) setBeThreshold(settings.beThreshold);
+  }, [settings]);
 
   const save = async () => {
     await setSetting('pl_display', plMode);
+    await setSetting('be_threshold', beThreshold);
     const toast = window.__addToast;
-    toast && toast('Préférence sauvegardée', 'success');
+    toast && toast('Préférences sauvegardées', 'success');
     onClose();
   };
 
@@ -54,7 +55,27 @@ const SettingsModal = ({ isOpen, onClose }) => {
               <button onClick={() => setPlMode('usd')} className={`px-3 py-1 rounded ${plMode === 'usd' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300'}`}>USD</button>
               <button onClick={() => setPlMode('percent')} className={`px-3 py-1 rounded ${plMode === 'percent' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300'}`}>%</button>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Si % : affiché en pourcentage du risque du trade (pnl / risk * 100)</p>
+            <p className="text-xs text-slate-500 mt-2">Si % : affiché en pourcentage du solde du compte.</p>
+          </div>
+
+          <div className="pt-4 border-t border-slate-700">
+            <label className="text-sm text-slate-300 block mb-2">Seuil Break Even (BE)</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0.3"
+                value={beThreshold}
+                onChange={(e) => setBeThreshold(e.target.value)}
+                className="bg-slate-800 text-white px-3 py-2 rounded border border-slate-600 w-24 focus:outline-none focus:border-cyan-500"
+              />
+              <span className="text-slate-400 text-sm">% du risque</span>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Les trades avec un P&L &lt; X% du risque (positif ou négatif) seront BE.<br/>
+              <span className="text-orange-400">Attention:</span> C'est le % du RISQUE, pas du compte.<br/>
+              Ex: +0.10% sur le compte peut valoir +10% du risque.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-700">

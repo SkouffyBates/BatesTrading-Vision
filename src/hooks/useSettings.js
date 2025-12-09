@@ -5,13 +5,19 @@ const SettingsContext = createContext(null);
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState({
     plDisplay: 'usd', // 'usd' or 'percent'
+    beThreshold: '0.3', // % of risk to consider Break Even
   });
 
   const loadSettings = async () => {
     try {
       if (window.db && window.db.getSetting) {
         const pl = await window.db.getSetting('pl_display');
-        if (pl) setSettings((s) => ({ ...s, plDisplay: pl }));
+        const be = await window.db.getSetting('be_threshold');
+        setSettings((s) => ({
+          ...s,
+          plDisplay: pl || 'usd',
+          beThreshold: be || '0.3'
+        }));
         return;
       }
     } catch (e) {
@@ -20,7 +26,13 @@ export const SettingsProvider = ({ children }) => {
 
     // fallback localStorage
     const plLocal = localStorage.getItem('pl_display');
-    if (plLocal) setSettings((s) => ({ ...s, plDisplay: plLocal }));
+    const beLocal = localStorage.getItem('be_threshold');
+    
+    setSettings((s) => ({
+      ...s,
+      plDisplay: plLocal || s.plDisplay,
+      beThreshold: beLocal || s.beThreshold
+    }));
   };
 
   useEffect(() => {
@@ -34,7 +46,12 @@ export const SettingsProvider = ({ children }) => {
       } else {
         localStorage.setItem(key, value);
       }
-      setSettings((s) => ({ ...s, [key === 'pl_display' ? 'plDisplay' : key]: value }));
+      
+      let stateKey = key;
+      if (key === 'pl_display') stateKey = 'plDisplay';
+      if (key === 'be_threshold') stateKey = 'beThreshold';
+      
+      setSettings((s) => ({ ...s, [stateKey]: value }));
       return true;
     } catch (e) {
       console.error('Error saving setting', e);

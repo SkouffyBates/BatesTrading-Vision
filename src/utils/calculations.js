@@ -16,14 +16,33 @@ export const filterTradesByTime = (trades, timeFilter) => {
   });
 };
 
-// ✅ Helper: Déterminer si un trade est BE (Break Even) - <0.3% du risque
-const isBE = (pnl, risk) => {
-  if (!risk || risk <= 0) return false;
-  const pct = Math.abs(pnl / risk) * 100;
-  return pct < 0.3; // <0.3% du risque = BE
+// ✅ Helper: Déterminer si un trade est BE (Break Even)
+// Supporte un seuil en % du risque (ex: 3%) OU une valeur fixe (ex: 10$)
+export const isBE = (pnl, risk, thresholdPct = 3.0, thresholdFlat = 10.0) => {
+  const absPnl = Math.abs(parseFloat(pnl || 0));
+  const absRisk = Math.abs(parseFloat(risk || 0));
+
+  // 1. Vérification par valeur fixe (si le PnL est négligeable en valeur absolue)
+  // L'utilisateur a mentionné "-10$" comme exemple.
+  if (absPnl <= thresholdFlat) return true;
+
+  // 2. Vérification par pourcentage du risque (si le risque est défini)
+  if (absRisk > 0) {
+    // Handle comma for French locale users (e.g. "0,3")
+    let cleanThreshold = thresholdPct;
+    if (typeof thresholdPct === 'string') {
+      cleanThreshold = thresholdPct.replace(',', '.');
+    }
+    
+    const pct = (absPnl / absRisk) * 100;
+    return pct <= parseFloat(cleanThreshold);
+  }
+
+  // Si pas de risque défini, seul le seuil fixe s'applique (déjà vérifié ci-dessus)
+  return false;
 };
 
-export const calculateStats = (trades, accounts, currentAccountId) => {
+export const calculateStats = (trades, accounts, currentAccountId, beThreshold = 0.3) => {
   // Guard against null/undefined inputs
   const safeTrades = Array.isArray(trades) ? trades : [];
   const safeAccounts = Array.isArray(accounts) ? accounts : [];
@@ -37,23 +56,23 @@ export const calculateStats = (trades, accounts, currentAccountId) => {
   
   const totalTrades = sortedTrades.length;
   
-  // ✅ CORRECTION: Classifier Win/Loss/BE correctement
+  // ✅ CORRECTION: Classifier Win/Loss/BE correctement avec seuil dynamique
   const wins = sortedTrades.filter(t => {
     const pnl = parseFloat(t.pnl || 0);
     const risk = parseFloat(t.risk || 0);
-    return pnl > 0 && !isBE(pnl, risk);
+    return pnl > 0 && !isBE(pnl, risk, beThreshold, 10);
   }).length;
   
   const losses = sortedTrades.filter(t => {
     const pnl = parseFloat(t.pnl || 0);
     const risk = parseFloat(t.risk || 0);
-    return pnl < 0 && !isBE(pnl, risk);
+    return pnl < 0 && !isBE(pnl, risk, beThreshold, 10);
   }).length;
   
   const breakEvens = sortedTrades.filter(t => {
     const pnl = parseFloat(t.pnl || 0);
     const risk = parseFloat(t.risk || 0);
-    return isBE(pnl, risk);
+    return isBE(pnl, risk, beThreshold, 10);
   }).length;
   
   const winRate = totalTrades ? ((wins / totalTrades) * 100).toFixed(1) : 0;
