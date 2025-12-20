@@ -28,6 +28,11 @@ contextBridge.exposeInMainWorld('db', {
   // Settings
   getSetting: (key) => ipcRenderer.invoke('db:getSetting', key),
   setSetting: (key, value) => ipcRenderer.invoke('db:setSetting', key, value),
+
+  // Eco Watch
+  getEcoNotes: () => ipcRenderer.invoke('db:getEcoNotes'),
+  createEcoNote: (note) => ipcRenderer.invoke('db:createEcoNote', note),
+  deleteEcoNote: (id) => ipcRenderer.invoke('db:deleteEcoNote', id),
 });
 
 // Expose updater API (guarded) to renderer
@@ -40,4 +45,9 @@ contextBridge.exposeInMainWorld('updater', {
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
   }
+});
+
+// Expose General App Info
+contextBridge.exposeInMainWorld('app', {
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
 });

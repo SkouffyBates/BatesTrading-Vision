@@ -179,6 +179,21 @@ jobs:
 - Vérifier `GH_TOKEN` a permissions `repo`
 - Vérifier le `.exe` est attaché au GitHub Release
 
+## Spécifique macOS (Sans Signature) 🍎
+
+Si vous n'avez pas de certificat Apple Developer ($99/an), l'auto-update sur Mac a des limitations strictes :
+
+1. **Configuration Build** :
+   Dans `.github/workflows/release.yml`, nous avons ajouté `CSC_IDENTITY_AUTO_DISCOVERY: false` pour forcer le build sans signature.
+
+2. **Limitations Utilisateur** :
+   - L'application affichera probablement "Développeur non identifié" au premier lancement.
+   - L'auto-update (téléchargement + redémarrage) peut échouer si macOS met la nouvelle version en quarantaine.
+   - **Recommandation** : Sans signature, il est souvent préférable de demander aux utilisateurs Mac de télécharger manuellement le `.dmg` depuis GitHub Releases si l'auto-update échoue.
+
+3. **Build Mac** :
+   - Vous **devez** utiliser GitHub Actions (le fichier `release.yml`) pour générer la version Mac car vous êtes sous Windows.
+
 ---
 
 **Prochaine étape** : Mettre à jour `package.json` avec la config `publish` et ajouter les handlers IPC !

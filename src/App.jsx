@@ -7,6 +7,7 @@ import Analysis from './components/Analysis/Analysis';
 import Psychology from './components/Psychology/Psychology';
 import TradingPlan from './components/TradingPlan/TradingPlan';
 import MacroEdge from './components/MacroEdge/MacroEdge';
+import EcoWatch from './components/EcoWatch/EcoWatch';
 import Sidebar from './components/Sidebar/Sidebar';
 import AccountModal from './components/Common/AccountModal';
 import SplashScreen from './components/Common/SplashScreen';
@@ -22,6 +23,8 @@ import useTradingPlan from './hooks/useTradingPlan';
 import useMacroEvents from './hooks/useMacroEvents';
 import useNavigation from './hooks/useNavigation';
 import { useDataManagement } from './hooks/useDataManagement';
+import useVersionCheck from './hooks/useVersionCheck';
+import ReleaseNotesModal from './components/Common/ReleaseNotesModal';
 
 // Constants
 import {
@@ -83,6 +86,8 @@ const App = () => {
     macroEvents,
     onImportComplete: () => window.location.reload()
   });
+
+  const { showReleaseNotes, setShowReleaseNotes, currentVersion } = useVersionCheck();
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -211,6 +216,10 @@ const App = () => {
             />
           )}
 
+          {currentView === VIEWS.ECO_WATCH && (
+            <EcoWatch />
+          )}
+
           {currentView === VIEWS.PSYCHOLOGY && (
             <Psychology trades={displayedTrades} />
           )}
@@ -231,6 +240,12 @@ const App = () => {
         onAddAccount={addAccount}
         onDeleteAccount={deleteAccount}
         onUpdateAccountName={updateAccountName}
+      />
+
+      <ReleaseNotesModal 
+        isOpen={showReleaseNotes} 
+        onClose={() => setShowReleaseNotes(false)} 
+        version={currentVersion}
       />
 
       <input

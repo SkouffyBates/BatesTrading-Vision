@@ -23,6 +23,9 @@ import {
   loadLegacyData,
   getSetting,
   setSetting,
+  getAllEcoNotes,
+  createEcoNote,
+  deleteEcoNote,
 } from './database.js';
 
 // --- CONFIGURATION ---
@@ -159,6 +162,11 @@ function setupIpcHandlers() {
   handle('db:getSetting', (_, k) => getSetting(k));
   handle('db:setSetting', (_, k, v) => setSetting(k, v));
 
+  // === ECO WATCH HANDLERS ===
+  handle('db:getEcoNotes', () => getAllEcoNotes());
+  handle('db:createEcoNote', (_, v) => createEcoNote(v));
+  handle('db:deleteEcoNote', (_, id) => deleteEcoNote(id));
+
   // === UPDATER HANDLERS (Async fixed) ===
   ipcMain.handle('app:checkForUpdates', async () => {
     if (!autoUpdater) return { ok: false, message: 'Updater not initialized' };
@@ -192,6 +200,9 @@ function setupIpcHandlers() {
       return { ok: false, message: e.message };
     }
   });
+
+  // === APP INFO HANDLERS ===
+  ipcMain.handle('app:getVersion', () => app.getVersion());
 }
 
 // Helper: Normalize DB rows to CamelCase

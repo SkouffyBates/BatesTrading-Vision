@@ -187,6 +187,18 @@ const createTables = () => {
     )
   `);
 
+  // Eco Watch notes table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS eco_notes (
+      id INTEGER PRIMARY KEY,
+      url TEXT,
+      summary TEXT NOT NULL,
+      impact TEXT NOT NULL,
+      related_assets TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('✅ All tables created');
 };
 
@@ -359,6 +371,26 @@ export const setSetting = (key, value) => {
     console.error('Error saving setting', key, e);
     return null;
   }
+};
+
+// ==================== ECO WATCH ====================
+
+export const getAllEcoNotes = () => {
+  const stmt = db.prepare('SELECT * FROM eco_notes ORDER BY created_at DESC');
+  return stmt.all();
+};
+
+export const createEcoNote = (note) => {
+  const stmt = db.prepare(`
+    INSERT INTO eco_notes (id, url, summary, impact, related_assets)
+    VALUES (@id, @url, @summary, @impact, @relatedAssets)
+  `);
+  return stmt.run(note);
+};
+
+export const deleteEcoNote = (id) => {
+  const stmt = db.prepare('DELETE FROM eco_notes WHERE id = ?');
+  return stmt.run(id);
 };
 
 // ==================== MIGRATION ====================

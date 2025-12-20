@@ -4,8 +4,9 @@ export const VIEWS = {
   TRADING: 'trading',
   ANALYSIS: 'analysis',
   PSYCHOLOGY: 'psychology',
+  PLAN: 'plan',
   MACRO: 'macro',
-  PLAN: 'plan'
+  ECO_WATCH: 'eco_watch',
 };
 
 export const COLORS = ['#10B981', '#EF4444', '#F59E0B', '#3B82F6'];

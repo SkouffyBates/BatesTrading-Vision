@@ -9,7 +9,8 @@ import {
   Plus,
   Download,
   Upload
-  , Settings
+  , Settings,
+  Activity
 } from 'lucide-react';
 import { VIEWS } from '../../utils/constants';
 import SettingsModal from '../Common/SettingsModal';
@@ -110,7 +111,14 @@ const Sidebar = ({
           }`}
         >
           <Globe size={20} /> <span className="nav-label">MacroEdge</span>
-          <span className="text-[10px] bg-red-500 text-white px-1 rounded ml-auto">PRO</span>
+        </button>
+        <button
+          onClick={() => onViewChange(VIEWS.ECO_WATCH)}
+          className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            currentView === VIEWS.ECO_WATCH ? 'active' : ''
+          }`}
+        >
+          <Activity size={20} /> <span className="nav-label">Veille Éco</span>
         </button>
         <button
           onClick={() => onViewChange(VIEWS.PSYCHOLOGY)}
