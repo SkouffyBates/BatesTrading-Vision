@@ -1,7 +1,7 @@
 export const RELEASE_NOTES = [
   {
     version: '1.2.7',
-    date: '2024-05-20',
+    date: '2025-12-19',
     title: 'Mise à jour Veille Économique',
     features: [
       '✨ Nouvel onglet "Veille Éco" pour suivre les news économiques.',
@@ -12,18 +12,6 @@ export const RELEASE_NOTES = [
     fixes: [
       'Correction du style des sélecteurs (dropdowns) en mode sombre.',
       'Optimisation des performances de la base de données.',
-    ]
-  },
-  {
-    version: '1.2.6',
-    date: '2024-05-10',
-    title: 'MacroEdge & Performance',
-    features: [
-      '✨ Module MacroEdge pour le suivi des événements majeurs.',
-      '✨ Calcul automatique du score de risque macro.',
-    ],
-    fixes: [
-      'Correction de bugs mineurs sur le calcul du PnL.',
     ]
   }
 ];
