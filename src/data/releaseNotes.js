@@ -1,6 +1,6 @@
 export const RELEASE_NOTES = [
   {
-    version: '1.2.8',
+    version: '1.2.9',
     date: '2025-12-19',
     title: 'Mise à jour Veille Économique',
     features: [
