@@ -35,7 +35,6 @@ jobs:
         run: npm run electron:publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false
           # Si vous avez des certificats Apple (optionnel mais recommandé pour Mac):
           # APPLE_ID: ${{ secrets.APPLE_ID }}
           # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
